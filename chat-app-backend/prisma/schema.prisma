@@ -6,3 +6,57 @@ datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
+
+enum FriendRequestStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  username  String   @unique
+  email     String   @unique
+  password  String
+  createdAt DateTime @default(now())
+  sentMessages Message[] @relation("SentMessages")
+  sentFriendRequests FriendRequest[] @relation("SentFriendRequests")
+  receivedFriendRequests FriendRequest[] @relation("ReceivedFriendRequests")
+  Chatasparticipant1 Chat[] @relation("Participant1")
+  Chatasparticipant2 Chat[] @relation("Participant2")
+}
+
+model Message {
+  id        Int      @id @default(autoincrement())
+  chatId    Int
+  chat      Chat     @relation(fields: [chatId], references: [id])
+  senderId  Int
+  sender User   @relation("SentMessages", fields: [senderId], references: [id])
+  content String
+  createdAt DateTime @default(now())
+
+}
+
+model FriendRequest {
+  id        Int      @id @default(autoincrement())
+  senderId  Int
+  sender User   @relation("SentFriendRequests", fields: [senderId], references: [id])
+  receiverId Int
+  receiver User   @relation("ReceivedFriendRequests", fields: [receiverId], references: [id])
+  status   FriendRequestStatus @default(PENDING)
+  createdAt DateTime @default(now())
+  @@unique([senderId, receiverId])
+}
+
+model Chat {
+  id        Int      @id @default(autoincrement())
+  participant1Id Int
+  participant1 User   @relation("Participant1", fields: [participant1Id], references: [id])
+  participant2Id Int
+  participant2 User   @relation("Participant2", fields: [participant2Id], references: [id])
+  lastMessage String?
+  lastMessageAt DateTime?
+  createdAt DateTime @default(now())
+  @@unique([participant1Id, participant2Id])
+  messages Message[]
+}
