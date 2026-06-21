@@ -1,5 +1,6 @@
 # Learning Notes
 
+# 2026-06-20
 ## IDs vs Usernames
 
 Do not use usernames as foreign keys.
@@ -111,3 +112,23 @@ Before coding ask:
 * What data exists?
 * Who owns it?
 * How is it related?
+
+# 2026-06-21
+
+## Prisma
+
+- Foreign keys live on the many side.
+- Relation arrays are mostly for reverse traversal and Prisma convenience.
+- validate checks schema syntax, not architecture quality.
+- generate creates the Prisma client.
+- migrate creates actual database tables.
+
+## Git
+
+- Git can be initialized at a parent folder and track nested projects.
+
+## Express
+
+- app.ts creates/configures the app.
+- server.ts starts the app.
+- express.json() parses incoming JSON bodies.

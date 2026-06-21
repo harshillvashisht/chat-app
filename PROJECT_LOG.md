@@ -44,3 +44,32 @@ Design the architecture for the real-time chat application before writing code.
 
 System design is sufficiently complete to begin implementation.
 Next step: create project structure and Prisma schema.
+
+## Future Features (V2)
+- Read receipts
+- Last read message tracking
+- Typing indicators
+- Online presence
+
+# Day 2 - Database Setup
+
+## Completed
+
+- Designed User schema
+- Designed FriendRequest schema
+- Designed Chat schema
+- Designed Message schema
+- Added relations
+- Connected Neon
+- Ran first migration
+- Generated Prisma client
+- Bootstrapped Express server
+- Verified localhost server works
+
+## Next Session
+
+Auth milestone:
+- Register endpoint
+- Login endpoint
+- JWT generation
+- Password hashing
