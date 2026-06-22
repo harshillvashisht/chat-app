@@ -1,0 +1,7 @@
+{
+  "editor.tabCompletion": "on",
+  "editor.quickSuggestions": { "other": true, "comments": false, "strings": false },
+  "editor.suggestOnTriggerCharacters": true,
+  "editor.snippetSuggestions": "inline",
+  "typescript.tsdk": "node_modules/typescript/lib"
+}
