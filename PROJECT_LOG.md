@@ -73,3 +73,60 @@ Auth milestone:
 - Login endpoint
 - JWT generation
 - Password hashing
+
+# Day 3 - Auth routes setup 
+
+## Completed
+
+## Authentication Module
+
+Implemented user registration endpoint.
+
+Features:
+
+* User creation using Prisma
+* Password hashing with bcrypt
+* Duplicate email protection
+* Zod request validation
+* Structured API responses
+
+Implemented user login endpoint.
+
+Features:
+
+* Email lookup using Prisma
+* Password verification with bcrypt.compare()
+* Invalid credential handling
+* Safe user response (excluding password)
+
+## Backend Architecture
+
+Implemented:
+
+* Service layer
+* Controller layer
+* Route layer
+* Global error middleware
+* Custom ApiError class
+* Validation schemas using Zod
+
+## Testing
+
+Verified using Postman:
+
+* Successful registration
+* Duplicate email handling
+* Missing field validation
+* Invalid input validation
+* Successful login
+* Invalid password handling
+* Non-existent user handling
+
+## Next Steps
+
+1. JWT Fundamentals
+2. Access Token Generation
+3. Return JWT on Login
+4. Authentication Middleware
+5. Protected Route Testing
+
