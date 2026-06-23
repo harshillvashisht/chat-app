@@ -216,3 +216,62 @@ The hardest part of authentication was not implementing login itself. The diffic
 
 Once the architecture was in place, implementing login became straightforward.
 
+# 2026-06-23
+
+## JWT Fundamentals
+
+* JWT is encoded, not encrypted.
+* JWT payload can be decoded by anyone possessing the token.
+* Sensitive data should not be stored inside JWT payloads.
+* JWT signing and verification must use the same secret.
+
+## Login Flow
+
+* Verify user credentials.
+* Generate JWT using jwt.sign().
+* Return token to client.
+* Client stores token and sends it on future requests.
+
+## Authentication Middleware
+
+* Read Authorization header from incoming requests.
+* Understand Bearer token format:
+  Authorization: Bearer <token>
+* Extract token using split(" ").
+* Verify token using jwt.verify().
+* Attach decoded payload to req.user.
+* Call next() to continue request execution.
+
+## Express Middleware Concepts
+
+* Middleware executes before route handlers.
+* Protected routes can be secured by placing auth middleware before routes.
+* Middleware can modify the request object before passing control.
+
+## TypeScript Learning
+
+* Express Request does not contain a user property by default.
+* Extend Express Request using declaration merging.
+* Create custom AuthUser interface.
+* Add AuthUser to Request type for autocomplete and type safety.
+* Use type assertions when working with jwt.verify() results.
+
+## Debugging Lessons
+
+* Use console logs to identify where execution stops.
+* Read actual error messages before changing code.
+* jwt.verify() throws errors rather than returning null.
+* Invalid signature errors usually indicate a token or secret mismatch.
+* Not every bug is in the code; sometimes the tool usage is incorrect.
+
+## Authentication Flow Understanding
+
+Login
+→ Generate JWT
+→ Client stores token
+→ Client sends token in Authorization header
+→ Middleware extracts token
+→ Middleware verifies token
+→ User data attached to req.user
+→ Protected route executes
+

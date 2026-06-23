@@ -35,7 +35,7 @@ export const login = async (req: Request, res: Response, next: NextFunction) =>{
         res.status(200).json({
             success: true,
             message: "user successfully logged in",
-            data: result
+            data: result.token
         })
     }
     catch(error: any){

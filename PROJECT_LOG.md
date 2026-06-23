@@ -130,3 +130,79 @@ Verified using Postman:
 4. Authentication Middleware
 5. Protected Route Testing
 
+# Day 4 - JWT middleware and login setup 
+
+## Features Implemented
+
+### Authentication
+
+* User registration endpoint completed.
+* User login endpoint completed.
+* Password hashing and verification implemented.
+* JWT generation implemented after successful login.
+
+### Authorization
+
+* Authentication middleware created.
+* Bearer token extraction implemented.
+* JWT verification implemented.
+* Decoded user payload attached to req.user.
+
+### Protected Routes
+
+* Created protected test route (/me).
+* Verified authenticated requests using Postman.
+* Successfully returned authenticated user information from token payload.
+
+### TypeScript Improvements
+
+* Created AuthUser interface.
+* Extended Express Request interface with user property.
+* Removed TypeScript errors related to req.user.
+* Added proper typing for authenticated requests.
+
+### Testing & Verification
+
+* Tested login flow.
+* Tested JWT generation.
+* Tested JWT verification.
+* Tested protected route access.
+* Confirmed end-to-end authentication flow is functioning correctly.
+
+## Challenges Faced
+
+* Authorization header handling.
+* Understanding Bearer token extraction.
+* Debugging JWT verification failures.
+* Fixing req.user TypeScript errors.
+* Diagnosing invalid signature errors.
+* Correcting Postman JWT usage.
+
+## Milestone Status
+
+✅ Register
+
+✅ Login
+
+✅ Password Hashing
+
+✅ JWT Generation
+
+✅ JWT Verification
+
+✅ Authentication Middleware
+
+✅ Protected Routes
+
+✅ Typed req.user
+
+Authentication system completed successfully.
+
+## Next Phase
+
+* Users
+* Conversations
+* Messages
+* Real-Time Messaging (Socket.IO)
+
+
