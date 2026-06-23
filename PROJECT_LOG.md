@@ -205,4 +205,115 @@ Authentication system completed successfully.
 * Messages
 * Real-Time Messaging (Socket.IO)
 
+### User Search Endpoint
+
+Implemented authenticated user search functionality.
+
+Endpoint:
+
+GET /api/v1/users/search?username=<query>
+
+---
+
+## Backend Flow
+
+Request
+
+↓
+
+Route
+
+↓
+
+Controller
+
+↓
+
+Service
+
+↓
+
+Prisma Query
+
+↓
+
+Response
+
+---
+
+## Functionality
+
+* Search users by partial username.
+* Perform case-insensitive matching.
+* Exclude the currently authenticated user.
+* Return only safe user fields.
+* Validate required query parameter.
+
+---
+
+## Security and Data Handling
+
+Returned:
+
+* id
+* username
+
+Excluded:
+
+* password
+* email
+
+This follows the principle of least data exposure.
+
+---
+
+## Testing Completed
+
+Verified:
+
+* Partial match search
+* Case-insensitive search
+* Self-search exclusion
+* Empty search results
+* Missing username query parameter
+
+All tests passed successfully.
+
+---
+
+## Current Project Status
+
+✅ Register
+
+✅ Login
+
+✅ Password Hashing
+
+✅ JWT Authentication
+
+✅ Auth Middleware
+
+✅ Protected Routes
+
+✅ User Search
+
+### Next Planned Feature
+
+Friend Request System
+
+Flow:
+
+Search User
+
+↓
+
+Send Friend Request
+
+↓
+
+Accept Friend Request
+
+↓
+
+Auto Create Chat
 

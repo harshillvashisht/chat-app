@@ -275,3 +275,119 @@ Login
 → User data attached to req.user
 → Protected route executes
 
+## User Search API Design
+
+Learned that searching users should use query parameters rather than path parameters.
+
+Example:
+
+GET /api/v1/users/search?username=har
+
+Reason:
+
+* Search is filtering a collection of users.
+* Multiple results may be returned.
+* Query parameters are designed for filtering.
+
+---
+
+## Partial Username Search
+
+Implemented partial matching using Prisma.
+
+Users do not need to remember the exact username.
+
+Example:
+
+Search:
+
+har
+
+Matches:
+
+* harsh
+* harry
+* harshill
+
+---
+
+## Case-Insensitive Search
+
+Learned how to perform case-insensitive searches in Prisma.
+
+Example:
+
+HAR
+har
+HaR
+
+all return the same results.
+
+This improves user experience and prevents unnecessary search failures.
+
+---
+
+## Excluding Current User
+
+Learned that business rules can often be enforced directly in database queries.
+
+Used a NOT condition to exclude the authenticated user from search results.
+
+Reason:
+
+* Users should not send friend requests to themselves.
+* Unnecessary data is not returned from the database.
+
+---
+
+## Data Exposure Principle
+
+Only return the data required by the feature.
+
+For user search, return:
+
+* id
+* username
+
+Do not return:
+
+* password
+* email
+* internal fields
+
+Principle:
+
+Return the minimum data needed for the frontend to function.
+
+---
+
+## Search Input Sanitization
+
+Usernames cannot contain spaces.
+
+Removed spaces from the search query before querying the database.
+
+Example:
+
+"har sh"
+
+becomes:
+
+"harsh"
+
+This makes searches more forgiving and user-friendly.
+
+---
+
+## API Testing
+
+Verified the following cases:
+
+* Partial username search
+* Case-insensitive search
+* Searching own username
+* Nonexistent username
+* Missing query parameter
+
+Testing edge cases is important before considering a feature complete.
+
