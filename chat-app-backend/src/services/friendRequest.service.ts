@@ -1,4 +1,3 @@
-import { NextFunction } from "express"
 import prisma from "../lib/prisma"
 import { ApiError } from "../utils/ApiError"
 

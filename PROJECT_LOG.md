@@ -317,3 +317,121 @@ Accept Friend Request
 
 Auto Create Chat
 
+# Day 5 - friend request and message endpoints 
+
+### Friend Requests
+
+Implemented:
+
+* Send Friend Request
+* Prevent Self Requests
+* Prevent Duplicate Requests
+* Prevent Reverse Duplicate Requests
+* Get Incoming Friend Requests
+* Accept Friend Requests
+
+---
+
+### Chat Creation
+
+Implemented automatic chat creation when a friend request is accepted.
+
+Added participant normalization:
+
+```ts
+const participant1Id = Math.min(senderId, receiverId);
+const participant2Id = Math.max(senderId, receiverId);
+```
+
+to guarantee a single chat per user pair.
+
+---
+
+### Messaging
+
+Implemented:
+
+#### Send Message
+
+Endpoint:
+
+```http
+POST /message/chat/:chatId
+```
+
+Features:
+
+* Chat existence validation
+* Participant authorization validation
+* Content validation
+* Transactional message creation
+* Automatic update of:
+
+  * lastMessage
+  * lastMessageAt
+
+#### Get Messages
+
+Endpoint:
+
+```http
+GET /message/chat/:chatId
+```
+
+Features:
+
+* Chat existence validation
+* Participant authorization validation
+* Chronological message retrieval
+
+---
+
+## Current Application Flow
+
+```text
+Register
+↓
+Login
+↓
+Search User
+↓
+Send Friend Request
+↓
+Accept Friend Request
+↓
+Chat Created
+↓
+Send Message
+↓
+Read Messages
+```
+
+---
+
+## Current Status
+
+Completed MVP backend flow for one-to-one messaging.
+
+Core functionality now exists from user discovery all the way to message exchange.
+
+Next likely feature:
+
+```text
+Get My Chats
+```
+
+to allow users to discover and open existing conversations.
+
+## Next features
+
+Login
+↓
+Get My Chats
+↓
+View Recent Conversations
+↓
+Open Chat
+↓
+View Other Participant
+↓
+Continue Conversation

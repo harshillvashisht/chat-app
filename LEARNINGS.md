@@ -391,3 +391,220 @@ Verified the following cases:
 
 Testing edge cases is important before considering a feature complete.
 
+# 2026-06-24
+
+## 1. Database Constraints vs Application Logic
+
+Today I learned that database constraints and application logic solve different problems.
+
+For example:
+
+```prisma
+@@unique([senderId, receiverId])
+```
+
+prevents duplicate rows from being inserted into the database, but it does not replace business logic checks.
+
+I still need application-level validation for cases such as:
+
+* Sending a friend request to myself
+* Returning a user-friendly error message before the database throws an error
+* Preventing reverse friend requests from creating duplicate relationships
+
+I also learned that database constraints are the final safety net, not the first line of validation.
+
+---
+
+## 2. Canonical Representation of Relationships
+
+A unique constraint on:
+
+```prisma
+@@unique([participant1Id, participant2Id])
+```
+
+does not prevent:
+
+```text
+(1,2)
+(2,1)
+```
+
+because those are different tuples.
+
+To solve this, I normalize the order before creating a chat:
+
+```ts
+const participant1Id = Math.min(senderId, receiverId);
+const participant2Id = Math.max(senderId, receiverId);
+```
+
+This guarantees that every chat between two users is represented the same way.
+
+---
+
+## 3. Prisma Relations and Select
+
+I learned how to fetch related data directly through Prisma relations.
+
+Example:
+
+```ts
+select: {
+    id: true,
+    sender: {
+        select: {
+            id: true,
+            username: true
+        }
+    }
+}
+```
+
+This allowed me to return incoming friend requests together with sender information without writing SQL joins manually.
+
+---
+
+## 4. Transactions
+
+I used Prisma transactions in two scenarios:
+
+### Friend Request Acceptance
+
+* Update request status
+* Create chat
+
+Both operations must succeed together.
+
+### Message Sending
+
+* Create message
+* Update chat metadata
+
+Both operations must succeed together.
+
+I learned two transaction styles:
+
+```ts
+prisma.$transaction([
+    ...
+])
+```
+
+and
+
+```ts
+prisma.$transaction(async (tx) => {
+    ...
+})
+```
+
+The callback version is useful when later queries depend on results from earlier queries.
+
+I also learned that `tx` is simply a transaction-scoped Prisma client.
+
+---
+
+## 5. Authorization Patterns
+
+A recurring backend pattern appeared today:
+
+```text
+Find Resource
+↓
+Existence Check
+↓
+Authorization Check
+↓
+Business Validation
+↓
+Database Operation
+```
+
+I used this pattern in:
+
+* Accept Friend Request
+* Send Message
+* Get Messages
+
+---
+
+## 6. Common Bugs Encountered
+
+### Missing await
+
+I accidentally wrote:
+
+```ts
+const chat = prisma.chat.findUnique(...)
+```
+
+instead of:
+
+```ts
+const chat = await prisma.chat.findUnique(...)
+```
+
+which caused TypeScript to treat the value as a Promise instead of a Chat object.
+
+### Route Parameter Mistake
+
+I called:
+
+```text
+/ friendRequest/:1/accept
+```
+
+instead of:
+
+```text
+/ friendRequest/1/accept
+```
+
+which resulted in `NaN` being parsed from the route parameter.
+
+### Authorization Logic
+
+I initially used:
+
+```ts
+||
+```
+
+where
+
+```ts
+&&
+```
+
+was required.
+
+This reminded me that authorization conditions must be tested carefully using actual values.
+
+---
+
+## 7. Messaging Design
+
+For message retrieval I chose:
+
+```ts
+orderBy: {
+    createdAt: "asc"
+}
+```
+
+because conversations should be read chronologically.
+
+I also learned that chat lists are usually sorted differently:
+
+```ts
+lastMessageAt: "desc"
+```
+
+so the most recently active chats appear first.
+
+---
+
+## Key Takeaway
+
+Today reinforced that backend development is less about writing queries and more about designing system behavior, validation rules, authorization checks, and data consistency.
