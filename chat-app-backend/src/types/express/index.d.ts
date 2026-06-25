@@ -1,3 +1,4 @@
+
 interface AuthUser {
     id: number;
     email: string;
@@ -11,5 +12,6 @@ declare global {
         }
     }
 }
+
 
 export {};

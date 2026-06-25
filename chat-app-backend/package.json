@@ -18,11 +18,12 @@
   "dependencies": {
     "@prisma/client": "^6.9.0",
     "bcryptjs": "^3.0.2",
+    "chat-app-backend": "file:",
     "cors": "^2.8.5",
     "dotenv": "^16.5.0",
     "express": "^5.1.0",
     "jsonwebtoken": "^9.0.2",
-    "socket.io": "^4.8.1",
+    "socket.io": "^4.8.3",
     "zod": "^4.4.3"
   },
   "devDependencies": {
@@ -32,6 +33,7 @@
     "@types/jsonwebtoken": "^9.0.9",
     "@types/node": "^22.15.30",
     "prisma": "^6.9.0",
+    "socket.io-client": "^4.8.3",
     "tsx": "^4.19.4",
     "typescript": "^5.8.3"
   }

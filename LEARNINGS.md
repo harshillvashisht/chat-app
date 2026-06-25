@@ -812,3 +812,188 @@ participant2
 
 which are implementation details.
 
+## 1. Express App vs HTTP Server
+
+Before Socket.IO:
+
+```ts
+app.listen(PORT);
+```
+
+After Socket.IO:
+
+```ts
+const server = http.createServer(app);
+server.listen(PORT);
+```
+
+Reason:
+
+* Express is a request handler.
+* HTTP Server owns the network connection.
+* Socket.IO must attach to the HTTP server, not Express.
+
+Architecture:
+
+```text
+HTTP Server
+├── Express
+└── Socket.IO
+```
+
+---
+
+## 2. REST and Socket.IO Have Different Responsibilities
+
+REST:
+
+```text
+Persistence
+Validation
+Authorization
+Database Operations
+```
+
+Socket.IO:
+
+```text
+Realtime Delivery
+Connection Management
+Rooms
+Presence
+```
+
+We are NOT replacing existing REST endpoints.
+
+Message flow:
+
+```text
+POST /messages
+↓
+Save To Database
+↓
+Emit Socket Event
+↓
+Realtime Update
+```
+
+Database remains the source of truth.
+
+---
+
+## 3. Socket.IO Authentication
+
+Express middleware:
+
+```ts
+(req, res, next)
+```
+
+Socket.IO middleware:
+
+```ts
+(socket, next)
+```
+
+Authentication is performed during the handshake.
+
+Client sends:
+
+```ts
+auth: {
+    token: jwt
+}
+```
+
+Server receives:
+
+```ts
+socket.handshake.auth.token
+```
+
+JWT is verified and user information is attached to the socket:
+
+```ts
+(socket as any).user = {
+    id,
+    email,
+    username
+}
+```
+
+---
+
+## 4. Socket.IO Error Handling
+
+Express:
+
+```ts
+throw new ApiError(...)
+```
+
+Socket.IO:
+
+```ts
+return next(new Error(...))
+```
+
+Socket.IO middleware should reject the connection using next(error).
+
+---
+
+## 5. Common Bug Found
+
+JWT payload contained:
+
+```ts
+{
+    id,
+    email,
+    username
+}
+```
+
+but middleware attempted:
+
+```ts
+payload.userId
+```
+
+Result:
+
+```text
+id = undefined
+```
+
+Fix:
+
+Use the same property name that was used when signing the JWT.
+
+---
+
+## 6. Testing Socket.IO
+
+Used socket.io-client test script.
+
+Flow:
+
+```text
+Client
+↓
+Connect
+↓
+Send JWT
+↓
+Authenticate
+↓
+Connection Accepted
+```
+
+Successfully verified:
+
+```text
+JWT reaches server
+JWT verifies correctly
+User attached to socket
+Socket connection established
+```

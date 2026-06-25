@@ -619,3 +619,194 @@ Realtime Messaging
 Online User Presence
 ```
 
+### Chat Discovery
+
+Implemented:
+
+```http
+GET /chat
+```
+
+Returns:
+
+```json
+{
+  "id": 1,
+  "otherUser": {
+    "id": 2,
+    "username": "john"
+  },
+  "lastMessage": "...",
+  "lastMessageAt": "..."
+}
+```
+
+Learned:
+
+* Prisma relation includes
+* Response transformation using map()
+* Returning frontend-friendly DTOs
+
+---
+
+### Friend Request Rejection
+
+Implemented:
+
+```http
+POST /friendRequest/:id/reject
+```
+
+Flow:
+
+```text
+Validate Request
+↓
+Validate Receiver
+↓
+Validate Pending Status
+↓
+Update Status To REJECTED
+```
+
+---
+
+### Resend After Rejection Fix
+
+Problem:
+
+```text
+Rejected requests could not be sent again.
+```
+
+Cause:
+
+```prisma
+@@unique([senderId, receiverId])
+```
+
+Solution:
+
+```text
+If request is REJECTED
+↓
+Update Status Back To PENDING
+↓
+Reuse Existing Row
+```
+
+Tested:
+
+```text
+Send
+↓
+Reject
+↓
+Resend
+↓
+Accept
+```
+
+Successfully working.
+
+---
+
+### Socket.IO Foundation
+
+Implemented:
+
+```text
+HTTP Server Creation
+Socket.IO Initialization
+Socket Authentication Middleware
+JWT Handshake Authentication
+Socket Connection Testing
+```
+
+Verified:
+
+```text
+Client Connects
+↓
+JWT Verified
+↓
+User Attached To Socket
+↓
+Connection Accepted
+```
+
+---
+
+## Current Backend Status
+
+```text
+✅ Register
+✅ Login
+✅ JWT Middleware
+
+✅ User Search
+
+✅ Send Friend Request
+✅ Get Incoming Requests
+✅ Accept Friend Request
+✅ Reject Friend Request
+
+✅ Auto Create Chat
+
+✅ Get Chats
+
+✅ Send Message
+✅ Get Messages
+
+✅ Socket.IO Server
+✅ Socket.IO Authentication
+```
+
+---
+
+## Next Feature
+
+### Socket.IO Room Management
+
+Flow:
+
+```text
+Socket Connect
+↓
+Authenticated User Available
+↓
+Fetch User Chats
+↓
+Join chat_<id> Rooms
+↓
+Verify Room Membership
+```
+
+Expected Result:
+
+```text
+User automatically joins all chat rooms
+they participate in.
+```
+
+---
+
+## After Room Management
+
+### Realtime Message Delivery
+
+Flow:
+
+```text
+POST /messages
+↓
+Save To Database
+↓
+Emit Socket Event
+↓
+Deliver Message To Chat Room
+```
+
+REST remains the source of truth.
+
+Socket.IO becomes the realtime delivery layer.

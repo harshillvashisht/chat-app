@@ -1,5 +1,7 @@
 {
   "dependencies": {
+    "chat-app-backend": "file:chat-app-backend",
+    "socket.io-client": "^4.8.3",
     "zod": "^4.4.3"
   }
 }
