@@ -608,3 +608,207 @@ so the most recently active chats appear first.
 ## Key Takeaway
 
 Today reinforced that backend development is less about writing queries and more about designing system behavior, validation rules, authorization checks, and data consistency.
+
+# 2026-06-25
+
+## 1. N+1 Query Problem
+
+A naive implementation of `GET /chat` would fetch all chats and then execute an additional query for each chat to retrieve the other user's information.
+
+Example:
+
+```text
+Get Chats
+↓
+For Each Chat
+↓
+Fetch Other User
+```
+
+This results in:
+
+```text
+1 Chat Query
++
+N User Queries
+```
+
+which does not scale well.
+
+Using Prisma relations with `include` allows all required data to be fetched in a single query.
+
+---
+
+## 2. API Responses Should Be Designed For Clients
+
+Database structures and API responses do not have to look the same.
+
+Database:
+
+```text
+participant1
+participant2
+```
+
+API Response:
+
+```text
+otherUser
+```
+
+A transformation layer can reshape database results into a format that is easier for the frontend to consume.
+
+Example:
+
+```ts
+const result = chats.map(...)
+```
+
+This pattern is common in backend development:
+
+```text
+Database Model
+↓
+Transformation
+↓
+API Response DTO
+```
+
+---
+
+## 3. State Transitions Matter
+
+Friend requests are not just records in a database.
+
+They have a lifecycle:
+
+```text
+PENDING
+↓
+ACCEPTED
+```
+
+or
+
+```text
+PENDING
+↓
+REJECTED
+↓
+PENDING
+```
+
+Backend logic must correctly handle transitions between states.
+
+---
+
+## 4. Database Constraints Influence Design
+
+The schema contains:
+
+```prisma
+@@unique([senderId, receiverId])
+```
+
+This prevents multiple friend request rows between the same pair of users.
+
+Because of this constraint, re-sending a rejected request cannot create a new row.
+
+Instead:
+
+```text
+REJECTED
+↓
+PENDING
+```
+
+must update the existing record.
+
+This is an example of database constraints shaping business logic.
+
+---
+
+## 5. Common Backend Bug: Forgetting To Return
+
+Handling a special case is not enough.
+
+Example:
+
+```text
+Handle REJECTED
+↓
+Update Request
+↓
+Return
+```
+
+Without returning, execution continues and may trigger unintended logic.
+
+A service should either:
+
+```text
+Return
+```
+
+or
+
+```text
+Throw
+```
+
+once a branch has been handled.
+
+---
+
+## 6. Designing Query Logic Around Business Rules
+
+The initial friend request query filtered only:
+
+```text
+ACCEPTED
+PENDING
+```
+
+which made it impossible to detect rejected requests.
+
+The better approach was:
+
+```text
+Find Existing Request
+↓
+Inspect Status
+↓
+Apply Business Logic
+```
+
+rather than filtering away states that still matter to the application.
+
+---
+
+## 7. Chat Discovery Design
+
+A chat list should return information useful to the frontend.
+
+Response shape:
+
+```json
+{
+  "id": 1,
+  "otherUser": {
+    "id": 2,
+    "username": "john"
+  },
+  "lastMessage": "Hello",
+  "lastMessageAt": "..."
+}
+```
+
+instead of exposing raw database fields like:
+
+```text
+participant1
+participant2
+```
+
+which are implementation details.
+

@@ -13,7 +13,7 @@ const app = express();
 app.use(express.json());
 
 app.use("/api/v1/auth", authRoutes);
-app.use("/api/v1/chat" , authmiddleware, chatRoutes );
+app.use("/api/v1" , authmiddleware, chatRoutes );
 app.use("/api/v1/users", authmiddleware,  userRoutes);
 app.use("/api/v1/friendRequest", authmiddleware, friendRequestRoutes);
 app.use("/api/v1/messages", authmiddleware, MessageRoute)

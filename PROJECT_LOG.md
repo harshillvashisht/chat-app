@@ -435,3 +435,187 @@ Open Chat
 View Other Participant
 ↓
 Continue Conversation
+
+# Day 6 - Get messages and friend request reject
+
+### Chat Discovery
+
+Implemented:
+
+```http
+GET /chat
+```
+
+Features:
+
+* Fetch all chats for the authenticated user
+* Load participant information using Prisma relations
+* Determine and return the other participant
+* Return:
+
+  * Chat ID
+  * Other User
+  * Last Message
+  * Last Message Timestamp
+* Sort chats by latest activity
+
+Example Response:
+
+```json
+{
+  "id": 1,
+  "otherUser": {
+    "id": 2,
+    "username": "john"
+  },
+  "lastMessage": "Hello",
+  "lastMessageAt": "..."
+}
+```
+
+---
+
+### Friend Request Rejection
+
+Implemented:
+
+```http
+POST /friendRequest/:id/reject
+```
+
+Validation:
+
+* Request exists
+* Current user is the receiver
+* Request status is PENDING
+
+Action:
+
+```text
+PENDING
+↓
+REJECTED
+```
+
+---
+
+### Friend Request Re-send Flow
+
+Updated friend request handling logic.
+
+Behavior:
+
+```text
+PENDING
+↓
+Blocked
+```
+
+```text
+ACCEPTED
+↓
+Blocked
+```
+
+```text
+REJECTED
+↓
+Revived To PENDING
+```
+
+Maintains:
+
+```prisma
+@@unique([senderId, receiverId])
+```
+
+without requiring additional database rows.
+
+---
+
+### Testing Completed
+
+Verified full lifecycle:
+
+```text
+Send Request
+↓
+Reject Request
+↓
+Re-send Request
+↓
+Accept Request
+↓
+Chat Created
+```
+
+All transitions behave correctly.
+
+---
+
+# Current Backend Status
+
+```text
+✅ Register
+✅ Login
+✅ JWT Middleware
+
+✅ User Search
+
+✅ Send Friend Request
+✅ Get Incoming Requests
+✅ Accept Friend Request
+✅ Reject Friend Request
+
+✅ Auto Create Chat
+
+✅ Get Chats
+
+✅ Send Message
+✅ Get Messages
+```
+
+---
+
+# Next Major Feature
+
+## Realtime Messaging (Socket.IO)
+
+Goal:
+
+```text
+User A Sends Message
+↓
+Server Receives Message
+↓
+Server Pushes Message To User B Instantly
+↓
+No Page Refresh Required
+```
+
+Topics To Learn:
+
+* WebSockets
+* Socket.IO
+* Events
+* Emit / On
+* Rooms
+* User-to-Socket Mapping
+* Realtime Message Delivery
+
+Planned Progression:
+
+```text
+Understand HTTP Limitations
+↓
+Learn WebSocket Fundamentals
+↓
+Integrate Socket.IO
+↓
+Create Chat Rooms
+↓
+Realtime Messaging
+↓
+Online User Presence
+```
+

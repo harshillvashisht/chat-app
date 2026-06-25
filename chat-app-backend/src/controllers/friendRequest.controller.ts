@@ -43,3 +43,20 @@ export const acceptRequest = async (req: Request, res: Response, next: NextFunct
     }
 
 }
+
+export const rejectRequest = async (req: Request, res: Response, next: NextFunction) => {
+    try{
+        const friendRequestId = +req.params.id;
+        const userId = req.user.id
+
+        await friendRequestService.rejectRequest(friendRequestId,userId);
+
+        res.status(200).json({
+            success: true,
+            message: "request rejected successfully"
+        })
+    }
+    catch(err){
+        next(err)
+    }
+}

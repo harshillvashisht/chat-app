@@ -36,11 +36,26 @@ const sendRequest = async (userId: number, username: string) => {
         }
     });
 
-    if(existingRequest){
-        throw new ApiError(409 , "A friend request already exist");
+    if(existingRequest?.status == "ACCEPTED"){
+        throw new ApiError(409 , "A friend request already exist and is Accepted");
     }
 
-    const sentRequest = prisma.friendRequest.create({
+    if(existingRequest?.status == "PENDING"){
+        throw new ApiError(409, "A friend request already exist and is Pending")
+    }
+
+    if(existingRequest?.status == "REJECTED"){
+        return await prisma.friendRequest.update({
+            where: {
+                id: existingRequest.id
+            },
+            data: {
+                status: "PENDING"
+            }
+        })
+    }
+
+    const sentRequest = await prisma.friendRequest.create({
         data: {
             senderId: userId,
             receiverId: receiver.id
@@ -121,4 +136,38 @@ const acceptRequest = async (friendRequestId: number, userId: number) =>{
     return createChat
 }
 
-export default { sendRequest, getRequests, acceptRequest }
+const rejectRequest = async (friendRequestId: number, userId: number) => {
+
+    if (isNaN(friendRequestId)) {
+        throw new ApiError(400, "Invalid friend request id");
+    }
+
+    const request = await prisma.friendRequest.findUnique({
+        where: {
+            id: friendRequestId
+        }
+    })
+
+    if(!request){
+        throw new ApiError(404 , "Request not found")
+    }
+
+    if(request.receiverId != userId){
+        throw new ApiError(403, "You are not authorised to reject this request")
+    }
+
+    if(request.status != "PENDING"){
+        throw new ApiError(400 , "Request is no longer Pending")
+    }
+
+    await prisma.friendRequest.update({
+        where: {
+            id: friendRequestId
+        },
+        data: {
+            status: "REJECTED"
+        }
+    })
+}
+
+export default { sendRequest, getRequests, acceptRequest, rejectRequest }
