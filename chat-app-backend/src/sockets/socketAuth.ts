@@ -1,6 +1,7 @@
 import jwt from "jsonwebtoken";
 import { Socket } from "socket.io";
 import "dotenv/config";
+import { AuthenticatedSocket } from "./socketTypes";
 
 interface JwtPayload {
     id: number;
@@ -24,7 +25,7 @@ export const socketAuthMiddleware = (socket: Socket , next: Function) => {
 
         const payload  = jwt.verify(token , process.env.JWT_SECRET as string) as JwtPayload
 
-        (socket as any).user = {
+        (socket as AuthenticatedSocket).user = {
             id: payload.id,
             email: payload.email,
             username: payload.username

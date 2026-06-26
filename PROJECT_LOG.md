@@ -436,7 +436,7 @@ View Other Participant
 ↓
 Continue Conversation
 
-# Day 6 - Get messages and friend request reject
+# Day 6 - Get messages and friend request reject and socket.io setup
 
 ### Chat Discovery
 
@@ -553,7 +553,7 @@ All transitions behave correctly.
 
 ---
 
-# Current Backend Status
+Current Backend Status
 
 ```text
 ✅ Register
@@ -577,7 +577,7 @@ All transitions behave correctly.
 
 ---
 
-# Next Major Feature
+Next Major Feature
 
 ## Realtime Messaging (Socket.IO)
 
@@ -810,3 +810,106 @@ Deliver Message To Chat Room
 REST remains the source of truth.
 
 Socket.IO becomes the realtime delivery layer.
+
+
+# Day 7  - socket.io rooms made and updates messages endpoint 
+
+## Dynamic Room Joining
+
+### What was built
+
+When a user connects via Socket.IO:
+
+1. Socket authentication middleware verifies JWT.
+2. Connection handler runs.
+3. Backend fetches all chats belonging to the user.
+4. User automatically joins all corresponding chat rooms.
+
+Example:
+
+User 1 chats:
+- chat_1
+- chat_5
+
+Connection
+    ↓
+join chat_1
+join chat_5
+
+### Why it matters
+
+Rooms allow targeting only relevant users instead of broadcasting events globally.
+
+Without rooms:
+
+emit
+    ↓
+every connected user receives it
+
+With rooms:
+
+emit to chat_1
+    ↓
+only chat_1 participants receive it
+
+---
+
+## Realtime Message Delivery
+
+### What was built
+
+After a message is successfully created:
+
+Create message
+    ↓
+Update chat metadata
+    ↓
+Emit new_message
+
+The controller emits the newly created message to:
+
+chat_${chatId}
+
+room.
+
+### Result
+
+Participants receive new messages instantly without refreshing or polling.
+
+---
+
+## End-to-End Verification
+
+Verified complete flow:
+
+User connects
+    ↓
+Joins chat rooms
+    ↓
+POST /messages
+    ↓
+Message stored in DB
+    ↓
+Socket event emitted
+    ↓
+Client receives payload
+
+Observed payload:
+
+{
+  id: 4,
+  chatId: 1,
+  senderId: 2,
+  content: "good morning",
+  createdAt: "..."
+}
+
+---
+
+Status:
+
+✓ Dynamic room joining implemented
+✓ Room architecture verified
+✓ Realtime message emission implemented
+✓ Realtime message reception verified
+✓ End-to-end messaging flow working

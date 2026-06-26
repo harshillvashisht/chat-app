@@ -1,6 +1,7 @@
 import { Server } from "socket.io";
 import http from "http";
 import { socketAuthMiddleware } from "./socketAuth";
+import { handleConnection } from "./socket.controller";
 
 let io: Server;
 
@@ -9,10 +10,7 @@ export const initializeSocket = (server: http.Server) => {
 
     io.use(socketAuthMiddleware)
 
-    io.on("connection", (socket) => {
-        console.log("connected")
-        console.log((socket as any).user);
-    });
+    io.on("connection", handleConnection);
 
     return io;
 };

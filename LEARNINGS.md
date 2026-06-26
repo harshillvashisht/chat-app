@@ -997,3 +997,142 @@ JWT verifies correctly
 User attached to socket
 Socket connection established
 ```
+# 2026-06-26
+
+## 1. Socket.IO Rooms Are Dynamic
+
+Rooms do not need to be pre-created.
+
+socket.join(`chat_${chat.id}`)
+
+creates/uses the room automatically.
+
+This allows an application to support any number of chats without hardcoding room names.
+
+---
+
+## 2. for...of vs for...in
+
+Wrong:
+
+for (const chat in chats)
+
+Returns array indexes.
+
+Correct:
+
+for (const chat of chats)
+
+Returns actual chat objects.
+
+This bug surfaced while trying to access chat.id.
+
+---
+
+## 3. Separation of Concerns
+
+Socket authentication:
+
+Verify JWT
+Attach user
+
+Room management:
+
+Join user rooms
+
+Message service:
+
+Business logic
+Database operations
+
+Controller:
+
+Emit socket events
+Return HTTP response
+
+Each layer should have a single responsibility.
+
+---
+
+## 4. Event Name vs Payload
+
+Incorrect mental model:
+
+emit(result.content)
+
+Socket.IO interprets the string as the event name.
+
+Correct mental model:
+
+emit(eventName, payload)
+
+Example:
+
+emit("new_message", result)
+
+Where:
+
+Event Name:
+    new_message
+
+Payload:
+    created message object
+
+---
+
+## 5. Realtime + REST Work Together
+
+Sockets are not a replacement for fetching history.
+
+Pattern:
+
+GET /messages
+    ↓
+Load existing messages
+
+socket.on("new_message")
+    ↓
+Receive future messages
+
+This is the standard architecture used by realtime chat applications.
+
+---
+
+## 6. Frontend and Rooms Are Different Concerns
+
+Server-side:
+
+User joins all chat rooms on connection.
+
+chat_1
+chat_5
+chat_12
+
+Frontend-side:
+
+When a new message arrives:
+
+if(message.chatId === currentOpenChatId)
+    append message to conversation
+else
+    update chat list
+    increment unread count
+
+Room membership is handled by the server.
+Message display decisions are handled by the frontend.
+
+---
+
+## 7. End-to-End Realtime Flow
+
+User A sends message
+        ↓
+Message saved in database
+        ↓
+Socket event emitted to room
+        ↓
+Room routes event
+        ↓
+User B receives event
+
+This was the first complete realtime feature implemented in the project.
