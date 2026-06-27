@@ -1,7 +1,10 @@
+
 import prisma from "../lib/prisma"
 import { ApiError } from "../utils/ApiError"
 
+
 const sendRequest = async (userId: number, username: string) => {
+
     const receiver = await prisma.user.findUnique({
         where: {
             username: username
@@ -20,6 +23,7 @@ const sendRequest = async (userId: number, username: string) => {
     if(receiver.id == userId){
         throw new ApiError(400 , "cannot send request to yourself")
     }
+
 
     const existingRequest = await prisma.friendRequest.findFirst({
         where: {

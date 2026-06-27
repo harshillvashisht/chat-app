@@ -45,7 +45,7 @@ model FriendRequest {
   receiver User   @relation("ReceivedFriendRequests", fields: [receiverId], references: [id])
   status   FriendRequestStatus @default(PENDING)
   createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  updatedAt DateTime @default(now()) @updatedAt
   @@unique([senderId, receiverId])
   @@index([receiverId, status])
 }
