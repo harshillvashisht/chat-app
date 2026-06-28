@@ -932,3 +932,35 @@ Request → Accept → Chat → Message → Realtime Delivery
 
 Next Step:
 Frontend Architecture Session
+
+# Day 9 - created frontend routes and auth page login
+
+Chat App Frontend
+
+Completed:
+- Created Vite React TypeScript frontend project.
+- Installed:
+  - react-router-dom
+  - axios
+  - socket.io-client
+- Created frontend folder structure:
+  - pages
+  - components
+  - services
+  - socket
+- Created:
+  - AuthPage
+  - ChatPage
+  - LoginForm
+  - RegisterForm
+- Configured routes:
+  - /auth
+  - /chat
+- Verified routing works in browser.
+- Implemented AuthPage toggle between LoginForm and RegisterForm.
+
+Next:
+- Build LoginForm UI.
+- Build RegisterForm UI.
+- Add form state using useState.
+- Connect forms to backend auth endpoints.

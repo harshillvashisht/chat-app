@@ -1136,3 +1136,277 @@ Room routes event
 User B receives event
 
 This was the first complete realtime feature implemented in the project.
+
+# 2026-06-27
+
+## Project Outcome
+
+Built and verified:
+
+- JWT Authentication
+- Friend Requests
+- Chat Creation
+- Messaging
+- Socket.IO Authentication
+- Socket Rooms
+- Realtime Message Delivery
+- Prisma Migrations
+- Database Indexes
+
+Verified end-to-end flow:
+
+User A
+→ Send Request
+→ User B Accepts
+→ Chat Created
+→ Send Message
+→ Realtime Delivery
+
+Backend V1 completed successfully.
+
+---
+
+# Technical Learnings
+
+## 1. Architecture Matters More Than Coding
+
+Most implementation became straightforward after deciding:
+
+- Friend request flow
+- Chat creation timing
+- Database schema
+- Room architecture
+- API structure
+
+Lesson:
+
+> Spend time designing before coding.
+
+---
+
+## 2. Debugging Is a Skill
+
+Example:
+
+FriendRequest.updatedAt migration issue.
+
+Process:
+
+- Added logs
+- Narrowed failure point
+- Read stack trace
+- Identified schema drift
+- Applied migration
+
+Lesson:
+
+> Investigate before asking for help.
+
+---
+
+## 3. Read the Actual Error
+
+Wrong approach:
+
+- Guessing
+- Looking only at HTTP 500
+
+Correct approach:
+
+- Read stack trace
+- Find exact failing line
+- Fix root cause
+
+Lesson:
+
+> The stack trace is usually the fastest path to the solution.
+
+---
+
+## 4. Schema Must Match Database
+
+Problem:
+
+Prisma schema expected:
+
+updatedAt
+
+Database did not contain:
+
+updatedAt
+
+Result:
+
+P2022 error.
+
+Lesson:
+
+> After schema changes, always run migrations and verify database state.
+
+---
+
+## 5. Build First, Optimize Later
+
+Avoided distractions:
+
+- Typing indicators
+- Read receipts
+- Online presence
+- Unread counts
+- Attachments
+
+Focused only on MVP.
+
+Lesson:
+
+> Finish the core product before adding extra features.
+
+---
+
+# Personal Learnings
+
+## 1. Finish Things
+
+Completed an entire backend instead of endlessly consuming tutorials.
+
+Lesson:
+
+> Building teaches more than watching.
+
+---
+
+## 2. Think Before Asking
+
+Current habit:
+
+Feature finished
+→ Ask "What's next?"
+
+Better habit:
+
+Feature finished
+→ Think for 5 minutes
+→ Propose next step
+→ Ask for review
+
+Lesson:
+
+> Develop architectural thinking, not just implementation skills.
+
+---
+
+## 3. Investigate Further Before Seeking Help
+
+Before asking:
+
+- Add logs
+- Read error
+- Form hypotheses
+
+Target:
+
+Reach 60-70% of investigation before requesting help.
+
+---
+
+## 4. Confidence Often Lags Behind Skill
+
+Repeated pattern:
+
+"I don't know backend."
+
+Then successfully implementing:
+
+- Transactions
+- Authorization
+- Realtime messaging
+- Socket rooms
+
+Lesson:
+
+> Judge progress by capability, not by confidence.
+
+---
+
+## 5. Engineering Requires Decisions
+
+Many situations do not have a perfect answer.
+
+Better approach:
+
+"This seems reasonable. Let's test it."
+
+Instead of:
+
+"What is the perfect solution?"
+
+Lesson:
+
+> Make decisions and gather evidence.
+
+---
+
+# Improvements For Frontend Phase
+
+When a feature is completed:
+
+Do not immediately ask:
+
+"What's next?"
+
+Instead:
+
+1. Think independently.
+2. Propose the next step.
+3. Explain your reasoning.
+4. Ask for critique.
+
+Example:
+
+"I think we should build routing before pages because multiple pages will need navigation. Am I missing something?"
+
+Goal:
+
+Move from:
+
+"Tell me what to do."
+
+to
+
+"Review my plan."
+
+---
+
+# Key Takeaway
+
+The biggest achievement of Backend V1 was not the code.
+
+It was crossing the line from:
+
+"I study programming."
+
+to
+
+"I can build software."
+
+# 2026-06-28
+
+Frontend Learning
+
+- Created first React + TypeScript project using Vite.
+- Learned Vite project creation flow:
+  - Framework selection (React)
+  - Variant selection (TypeScript)
+  - ESLint setup
+- Learned basic React Router setup:
+  - BrowserRouter
+  - Routes
+  - Route
+- Learned that JSX must be returned from a component.
+- Fixed issue where BrowserRouter was not being returned from App component.
+- Understood basic frontend architecture:
+  - Pages
+  - Components
+  - Services
+  - Socket layer
+- Discussed AuthPage architecture and decided to use a Login/Register toggle inside a single AuthPage route.
