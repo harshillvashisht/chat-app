@@ -1410,3 +1410,12 @@ Frontend Learning
   - Services
   - Socket layer
 - Discussed AuthPage architecture and decided to use a Login/Register toggle inside a single AuthPage route.
+
+## 2026-06-29
+
+- Built controlled Login and Register forms using React state.
+- Connected frontend forms to the backend through a dedicated auth API layer.
+- Learned the child → parent callback pattern (`onRegisterSuccess`) for updating parent state.
+- Configured Tailwind CSS for the project and used it for the auth UI.
+- Debugged a CORS issue by tracing the request flow from React → Browser → Express instead of guessing.
+- Completed my first full frontend authentication flow (React → Axios → Backend → Cookie → Navigation).

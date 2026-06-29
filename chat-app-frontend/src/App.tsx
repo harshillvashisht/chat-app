@@ -1,4 +1,3 @@
-import './App.css'
 import { Route, BrowserRouter, Routes } from 'react-router-dom';
 import AuthPage from './pages/AuthPage.tsx';
 import ChatPage from './pages/ChatPage.tsx';

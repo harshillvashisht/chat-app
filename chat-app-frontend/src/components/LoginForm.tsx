@@ -1,12 +1,59 @@
+import { useState } from 'react';
+import { login } from '../services/authApi'
+import { useNavigate } from 'react-router-dom';
+
 export default function LoginForm() {
-    return (
-        <div>
-            <h2>Login</h2>
-            <form>
-                <input type="text" placeholder="Username" />
-                <input type="password" placeholder="Password" />
-                <button type="submit">Login</button>
-            </form>
-        </div>
-    );
+    const navigate = useNavigate();
+
+    const [email, setEmail] = useState("");
+    const [password, setPassword] = useState("");
+
+    const handleSubmit = async (e: React.SubmitEvent<HTMLFormElement>) => {
+        e.preventDefault();
+         
+
+        try {
+            
+            await login(email, password);
+
+            navigate("/chat");
+        }
+        catch (error) {
+            console.error("Error:", error);
+        }
+    }
+
+
+  return (
+    <form
+      onSubmit={handleSubmit}
+      className="flex flex-col gap-4"
+    >
+      <input
+        type="email"
+        placeholder="Email"
+        value={email}
+        onChange={(e) => setEmail(e.target.value)}
+        required
+        className="rounded-lg border border-gray-300 px-4 py-3 outline-none transition focus:border-blue-500"
+      />
+
+      <input
+        type="password"
+        placeholder="Password"
+        value={password}
+        onChange={(e) => setPassword(e.target.value)}
+        required
+        minLength={8}
+        className="rounded-lg border border-gray-300 px-4 py-3 outline-none transition focus:border-blue-500"
+      />
+
+      <button
+        type="submit"
+        className="rounded-lg bg-blue-600 py-3 font-medium text-white transition hover:bg-blue-700"
+      >
+        Login
+      </button>
+    </form>
+  );
 }

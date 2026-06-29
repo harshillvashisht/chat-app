@@ -964,3 +964,12 @@ Next:
 - Build RegisterForm UI.
 - Add form state using useState.
 - Connect forms to backend auth endpoints.
+
+# Day 10 - made loginform and registerform and connected with backend
+
+- Added Tailwind CSS to the frontend.
+- Built AuthPage with Login/Register toggle.
+- Implemented LoginForm and RegisterForm.
+- Created reusable Axios instance and auth API service.
+- Connected login and registration to the backend.
+- Verified successful login, cookie storage, navigation, and session persistence after refresh.

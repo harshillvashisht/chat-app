@@ -7,9 +7,17 @@ import userRoutes from "./routes/user.routes";
 import friendRequestRoutes from "./routes/friendRequest.routes";
 import MessageRoute from "./routes/message.routes";
 import cookieParser from "cookie-parser";
+import cors from "cors";
 
 
 const app = express();
+
+app.use(
+    cors({
+        origin: "http://localhost:5173",
+        credentials: true,
+    })
+);
 
 app.use(express.json());
 
