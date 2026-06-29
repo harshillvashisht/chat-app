@@ -30,12 +30,19 @@ export const login = async (req: Request, res: Response, next: NextFunction) =>{
         const validatedInput = LoginUser.parse(req.body);
         const { email , password } = validatedInput;
 
+        
         const result = await authService.validateUser(email, password);
+
+        res.cookie("token", result.token, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === "production",
+            sameSite: "lax",
+            maxAge: 1000 * 60 * 60 * 24 * 7,
+        });
 
         res.status(200).json({
             success: true,
             message: "user successfully logged in",
-            data: result.token
         })
     }
     catch(error: any){

@@ -12,13 +12,12 @@ interface AuthUser {
 
 export const authmiddleware = (req: Request,res: Response,next: NextFunction) => {
     
-    const authHeader= req.headers.authorization;
+    const token= req.cookies.token;
 
-    if(!authHeader || !authHeader.startsWith('Bearer ')){
+    if(!token ){
         throw new ApiError(401, "Token not received")
     }
 
-    const token: string = authHeader.split(' ')[1];
 
     if(!process.env.JWT_SECRET){
         throw new ApiError(500 , "JWT_SECRET is not defined in environment variables")

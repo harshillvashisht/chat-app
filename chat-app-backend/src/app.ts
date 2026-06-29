@@ -6,11 +6,14 @@ import { authmiddleware } from "./middleware/auth.middleware";
 import userRoutes from "./routes/user.routes";
 import friendRequestRoutes from "./routes/friendRequest.routes";
 import MessageRoute from "./routes/message.routes";
+import cookieParser from "cookie-parser";
 
 
 const app = express();
 
 app.use(express.json());
+
+app.use(cookieParser());
 
 app.use("/api/v1/auth", authRoutes);
 app.use("/api/v1" , authmiddleware, chatRoutes );
