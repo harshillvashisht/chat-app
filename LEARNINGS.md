@@ -1419,3 +1419,13 @@ Frontend Learning
 - Configured Tailwind CSS for the project and used it for the auth UI.
 - Debugged a CORS issue by tracing the request flow from React → Browser → Express instead of guessing.
 - Completed my first full frontend authentication flow (React → Axios → Backend → Cookie → Navigation).
+
+# 2026-06-30
+
+### What I Learned
+
+- Planned the chat page by breaking it into reusable components instead of creating one large component.
+- Learned why state should eventually be owned by `ChatPage` and passed down as props rather than each component fetching its own data.
+- Implemented a proper React modal pattern by passing an `onClose` callback from the parent component.
+- Understood event bubbling and why `e.stopPropagation()` prevents the overlay click from firing while not affecting API requests.
+- Reinforced that UI structure and functionality should be completed before spending time on visual polish.

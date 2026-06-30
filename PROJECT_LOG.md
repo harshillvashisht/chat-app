@@ -973,3 +973,16 @@ Next:
 - Created reusable Axios instance and auth API service.
 - Connected login and registration to the backend.
 - Verified successful login, cookie storage, navigation, and session persistence after refresh.
+
+# Day 11 - Created the initial Chat Page layout with `Sidebar` and `ChatArea`.
+
+- Added reusable components:
+  - Sidebar
+  - SearchUser
+  - ChatList
+  - ChatHeader
+  - MessageList
+  - MessageInput
+- Implemented the Friend Requests button and modal UI.
+- Added dummy chat messages and dummy friend request data for layout testing.
+- Styled the initial chat page using Tailwind CSS to establish the application's overall structure.

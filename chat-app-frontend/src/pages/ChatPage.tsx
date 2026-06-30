@@ -1,14 +1,20 @@
-import { useEffect } from 'react';
+import { useState} from "react";
+import Sidebar from "../components/Sidebar";
+import ChatArea from "../components/ChatArea";
 
 export default function ChatPage() {
+    const [selectedChat, setSelectedChat] = useState(null);
 
-    useEffect(() => {
-    console.log("Chat page mounted");
-}, []);
+    const [messages, setMessages] = useState([]);
 
-    return (
-        <div>
-            <h1>Chat Page</h1>
-        </div>
-    );
+    const [chats, setChats] = useState([]);
+
+    const [pendingRequests, setPendingRequests] = useState([]);
+
+  return (
+    <div className="h-screen bg-slate-100 flex">
+      <Sidebar />
+      <ChatArea />
+    </div>
+  );
 }
