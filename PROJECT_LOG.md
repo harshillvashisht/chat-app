@@ -986,3 +986,14 @@ Next:
 - Implemented the Friend Requests button and modal UI.
 - Added dummy chat messages and dummy friend request data for layout testing.
 - Styled the initial chat page using Tailwind CSS to establish the application's overall structure.
+
+# Day 12 - connected backend apis with frontend , made pages dynamic 
+
+* Updated frontend types to match backend API responses.
+* Connected chat list to the backend using `GET /chats`.
+* Connected message list to the backend using chat-specific message fetching.
+* Connected friend request modal to backend pending request data.
+* Replaced hardcoded chat, message, and friend request UI with dynamic rendering.
+* Added chat selection flow and automatic message loading using `useEffect`.
+* Implemented accept and decline friend request actions with immediate UI updates after successful API responses.
+* Prepared the application for the next milestone: real-time messaging with Socket.IO.

@@ -1429,3 +1429,20 @@ Frontend Learning
 - Implemented a proper React modal pattern by passing an `onClose` callback from the parent component.
 - Understood event bubbling and why `e.stopPropagation()` prevents the overlay click from firing while not affecting API requests.
 - Reinforced that UI structure and functionality should be completed before spending time on visual polish.
+
+# 2025-07-01
+
+## Learning Log - Chat App Frontend Integration
+
+* Replaced guessed frontend interfaces with types that exactly match backend API responses.
+* Understood React's data flow by keeping application state in `ChatPage` and passing it to child components through props.
+* Learned why callback props such as `onSelectChat` are preferred over directly exposing state setters.
+* Converted `ChatList`, `ChatHeader`, `FriendRequestModal`, and `MessageList` from static UI to dynamic components using backend data.
+* Practiced using `useEffect` for different scenarios:
+
+  * Fetch chats on component mount.
+  * Fetch friend requests on component mount.
+  * Fetch messages whenever the selected chat changes.
+* Reinforced the idea that components should only receive the data they need instead of managing unrelated state.
+* Learned why HTTP-only JWT cookies require a future `/auth/me` endpoint to identify the currently logged-in user on the frontend.
+* Improved React architecture by letting the parent component own state while child components communicate through callback props.
