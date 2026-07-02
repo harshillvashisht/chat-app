@@ -8,8 +8,6 @@ export const getChats = async (req: Request, res: Response, next: NextFunction) 
 
         const result = await chatService.getchats(userId);
 
-        console.log(result)
-
         res.status(200).json(result)
 
     }

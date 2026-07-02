@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { login } from '../services/authApi'
 import { useNavigate } from 'react-router-dom';
+import { socket } from '../socket/socket';
 
 export default function LoginForm() {
     const navigate = useNavigate();
@@ -15,6 +16,10 @@ export default function LoginForm() {
         try {
             
             await login(email, password);
+
+
+            socket.connect();
+
 
             navigate("/chat");
         }

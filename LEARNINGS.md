@@ -1430,7 +1430,7 @@ Frontend Learning
 - Understood event bubbling and why `e.stopPropagation()` prevents the overlay click from firing while not affecting API requests.
 - Reinforced that UI structure and functionality should be completed before spending time on visual polish.
 
-# 2025-07-01
+# 2026-07-01
 
 ## Learning Log - Chat App Frontend Integration
 
@@ -1446,3 +1446,17 @@ Frontend Learning
 * Reinforced the idea that components should only receive the data they need instead of managing unrelated state.
 * Learned why HTTP-only JWT cookies require a future `/auth/me` endpoint to identify the currently logged-in user on the frontend.
 * Improved React architecture by letting the parent component own state while child components communicate through callback props.
+
+# 2026-07-02
+
+How Socket.IO authentication works with HTTP-only cookies.
+
+How to join users into multiple chat rooms.
+
+How to emit room-specific events.
+
+How frontend and backend sockets communicate in real time.
+
+How to debug distributed systems using logs instead of guessing.
+
+Why browser tabs can share authentication state and cause confusing test results

@@ -13,13 +13,9 @@ export const joinUserRooms = async (socket: AuthenticatedSocket) => {
         }
     });
 
+
     for( const chat of chats ){
         await socket.join(`chat_${chat.id}`);
 
-        console.log(
-            socket.user.username,
-            "joined",
-            `chat_${chat.id}`
-        );
     }
 }

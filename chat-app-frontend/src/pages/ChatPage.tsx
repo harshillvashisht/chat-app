@@ -6,6 +6,7 @@ import { useEffect } from "react";
 import { getChats }  from "../services/chatApi.ts";
 import { getMessages } from "../services/messageApi.ts";
 import { acceptRequest, declineRequest, getRequests } from "../services/friendRequestApi.ts";
+import { socket } from "../socket/socket.ts";
 
 export default function ChatPage() {
     const [selectedChat, setSelectedChat] = useState<Chat | null>(null);
@@ -15,6 +16,27 @@ export default function ChatPage() {
     const [chats, setChats] = useState<Chat[]>([]);
 
     const [pendingRequests, setPendingRequests] = useState<FriendRequest[]>([]);
+
+    const handleNewMessage = (newMessage: Message) => {
+
+
+        // If this message belongs to the currently open chat
+        if (selectedChat && newMessage.chatId === selectedChat.id) {
+              setMessages((prev) => [...prev, newMessage]);
+        }
+
+        // TODO:
+        // Update chats sidebar
+};
+
+   useEffect(() => {
+
+    socket.on("new_message", handleNewMessage);
+
+    return () => {
+        socket.off("new_message", handleNewMessage);
+    };
+}, [selectedChat]);
 
     const onAcceptRequest = async (requestId: number) => {
       try{

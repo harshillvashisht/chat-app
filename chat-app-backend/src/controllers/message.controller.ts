@@ -15,7 +15,7 @@ export const sendMessage = async (req: Request, res: Response, next: NextFunctio
         const io = getIO();
 
         io.to(`chat_${chatId}`).emit("new_message" , result);
-        console.log(`Emitted new_message to chat_${chatId}`);
+        
 
         res.status(200).json(result);
     }

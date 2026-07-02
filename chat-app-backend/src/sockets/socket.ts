@@ -6,7 +6,12 @@ import { handleConnection } from "./socket.controller";
 let io: Server;
 
 export const initializeSocket = (server: http.Server) => {
-    io = new Server(server);
+    io = new Server(server, {
+    cors: {
+        origin: "http://localhost:5173",
+        credentials: true,
+    },
+});
 
     io.use(socketAuthMiddleware)
 

@@ -997,3 +997,19 @@ Next:
 * Added chat selection flow and automatic message loading using `useEffect`.
 * Implemented accept and decline friend request actions with immediate UI updates after successful API responses.
 * Prepared the application for the next milestone: real-time messaging with Socket.IO.
+
+# Day 13 - socket client implementation , realtime message testing 
+
+Implemented real-time messaging with Socket.IO.
+
+Connected frontend socket after login.
+
+Authenticated sockets using JWT cookies.
+
+Joined all user chat rooms on connection.
+
+Emitted new_message events from the backend.
+
+Received real-time events on the frontend.
+
+Verified live messaging between two different browsers/users.

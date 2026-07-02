@@ -4,6 +4,8 @@ import { AuthenticatedSocket } from "./socketTypes";
 
 export const handleConnection = async (socket: Socket) => {
 
+    
+
     const authsocket = socket as AuthenticatedSocket;
 
     await joinUserRooms(authsocket);

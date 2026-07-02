@@ -1,6 +1,7 @@
 import jwt from "jsonwebtoken";
 import { Socket } from "socket.io";
 import "dotenv/config";
+import { parseCookie } from "cookie";
 import { AuthenticatedSocket } from "./socketTypes";
 
 interface JwtPayload {
@@ -11,10 +12,18 @@ interface JwtPayload {
 
 export const socketAuthMiddleware = (socket: Socket , next: Function) => {
 
-    const token = socket.handshake.auth.token;
+    const cookieHeader = socket.handshake.headers.cookie;
 
-    if(!token){
-        return next(new Error("token not received "));
+    if (!cookieHeader) {
+    return next(new Error("No cookies received"));
+}
+
+    const cookies = parseCookie(cookieHeader);
+
+    const token = cookies.token;
+
+    if (!token) {
+        return next(new Error("Token not found"));
     }
 
     if(!process.env.JWT_SECRET){
