@@ -1460,3 +1460,32 @@ How frontend and backend sockets communicate in real time.
 How to debug distributed systems using logs instead of guessing.
 
 Why browser tabs can share authentication state and cause confusing test results
+
+# 2026-07-03
+
+## React
+- Learned how to fetch and use the authenticated user throughout the application.
+- Understood where optimistic UI updates should be implemented (where state is owned).
+- Implemented automatic scrolling using `useRef` and `scrollIntoView()`.
+- Practiced conditional rendering based on application state.
+
+## Backend/API Design
+- Learned that API responses should be designed around frontend requirements rather than directly mirroring database models.
+- Understood the concept of enriching API responses with derived information (relationship status).
+
+## State Management
+- Updated chat sidebar state in response to Socket.IO events.
+- Implemented optimistic updates for search results after sending friend requests.
+- Refreshed chat state after accepting a request to synchronize the UI.
+
+## Engineering Lessons
+- Designing the API contract before implementation prevents unnecessary backend iterations.
+- A database schema and an API response are two different things.
+- Requirements discovered during implementation often indicate missing design decisions rather than bad code.
+- Small UX improvements (auto-scroll, optimistic UI, real-time sidebar updates) significantly improve the feel of an application.
+
+## Tomorrow
+- Investigate Socket.IO reconnection after page refresh.
+- Add search debounce.
+- Review search feature edge cases.
+- Optional: Better timestamp formatting and loading states.

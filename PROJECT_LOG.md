@@ -1013,3 +1013,41 @@ Emitted new_message events from the backend.
 Received real-time events on the frontend.
 
 Verified live messaging between two different browsers/users.
+
+# Day 14 - implemented userSearch and Ui improvements
+
+## Authentication
+- Added `/auth/me` endpoint.
+- Integrated authenticated user fetching on the frontend.
+- Removed the temporary hardcoded current user ID.
+- Fixed message alignment using the authenticated user.
+
+## Real-Time Chat
+- Sidebar now updates immediately when new messages arrive.
+- Chats automatically move to the top based on the latest activity.
+- Implemented auto-scroll to the newest message.
+
+## User Search
+- Integrated live user search API.
+- Added search results panel.
+- Implemented relationship-aware search results.
+- Added conditional button states:
+  - Add Friend
+  - Pending
+  - Friends
+  - Check Requests
+- Implemented optimistic UI update after sending friend requests.
+
+## Friend Requests
+- Chat list refreshes immediately after accepting a friend request.
+- Connected search flow with the existing friend request system.
+
+## Notes
+- Discovered shortcomings in the original API contract for the search feature.
+- Decided to improve our future development process by designing:
+  1. UI
+  2. API Contract
+  3. Edge Cases
+  4. Backend
+  5. Frontend
+before implementing new features.

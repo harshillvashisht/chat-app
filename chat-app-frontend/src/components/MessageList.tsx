@@ -1,17 +1,25 @@
 import type { Message } from "../types/chat";
+import { useEffect, useRef } from "react";
 
 type MessageListProps = {
   messages: Message[];
+  currentUser: { id: number; username: string } | null;
 };
 
-export default function MessageList({ messages }: MessageListProps) {
-  // TODO: Replace with authenticated user from /auth/me
-  const currentUserId = 1;
+export default function MessageList({ messages, currentUser }: MessageListProps) {
+
+  const bottomRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({
+        behavior: "smooth",
+    });
+}, [messages]);
 
   return (
     <div className="flex-1 overflow-y-auto space-y-4 p-6">
       {messages.map((message) => {
-        const isOwnMessage = message.senderId === currentUserId;
+        const isOwnMessage = currentUser && message.senderId === currentUser.id;
 
         return (
           <div
@@ -48,6 +56,7 @@ export default function MessageList({ messages }: MessageListProps) {
           No messages yet.
         </div>
       )}
+      <div ref={bottomRef}></div>
     </div>
   );
 }

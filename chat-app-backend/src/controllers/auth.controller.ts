@@ -49,3 +49,22 @@ export const login = async (req: Request, res: Response, next: NextFunction) =>{
         next(error)
     }
 }
+
+export const getuser = async (req: Request, res: Response, next: NextFunction) => {
+
+    try{
+
+        const userid = req.user.id;
+
+        const response = await authService.getuser(userid);
+
+        if (!response) {
+            return res.status(404).json({ message: "User not found" });
+        }
+
+        res.status(200).json(response);
+
+    } catch(err){
+        next(err);
+    }
+}

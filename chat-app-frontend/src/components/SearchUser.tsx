@@ -1,4 +1,9 @@
-export default function SearchUser() {
+type SearchUserProps = {
+    searchQuery: string;
+    setSearchQuery: React.Dispatch<React.SetStateAction<string>>;
+};
+
+export default function SearchUser({ searchQuery, setSearchQuery }: SearchUserProps) {
   return (
     <form
       onSubmit={(e) => e.preventDefault()}
@@ -7,6 +12,8 @@ export default function SearchUser() {
       <input
         type="text"
         placeholder="Search users..."
+        value={searchQuery}
+        onChange={(e) => setSearchQuery(e.target.value)}
         className="w-full rounded-lg border border-gray-300 px-4 py-2 outline-none focus:ring-2 focus:ring-blue-500"
       />
     </form>

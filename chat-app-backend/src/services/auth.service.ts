@@ -54,4 +54,20 @@ const validateUser = async (email: string , password: string) => {
     return { token }
 }
 
-export default { createUser , validateUser };
+const getuser = async (userid: number) => {
+
+    const userinfo = await prisma.user.findUnique({
+        where: {
+            id: userid
+        }
+        ,
+        select: {
+            id: true,
+            username: true
+        }
+    })
+
+    return userinfo;
+}
+
+export default { createUser , validateUser, getuser };

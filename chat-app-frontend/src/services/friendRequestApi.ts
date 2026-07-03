@@ -11,3 +11,9 @@ export async function acceptRequest(chatId: number){
 export async function declineRequest(chatId: number){
     return api.post(`/friendRequest/${chatId}/reject`)
 }
+
+export async function sendFriendRequest(username: string){
+    return api.post("/friendRequest/send", {
+        username
+    })
+}

@@ -14,3 +14,8 @@ export async function register(username: string , email: string, password: strin
         password
     })
 }
+
+export async function getCurrentUser() {
+    const response = await api.get("/auth/me");
+    return response.data;
+}

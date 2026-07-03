@@ -1,12 +1,12 @@
-import { useState} from "react";
+import { useState, useEffect } from "react";
 import Sidebar from "../components/Sidebar";
 import ChatArea from "../components/ChatArea";
-import type { Chat , Message, FriendRequest } from "../types/chat";
-import { useEffect } from "react";
+import type { Chat, Message, FriendRequest, User } from "../types/chat";
 import { getChats }  from "../services/chatApi.ts";
 import { getMessages } from "../services/messageApi.ts";
 import { acceptRequest, declineRequest, getRequests } from "../services/friendRequestApi.ts";
 import { socket } from "../socket/socket.ts";
+import { getCurrentUser } from "../services/authApi.ts";
 
 export default function ChatPage() {
     const [selectedChat, setSelectedChat] = useState<Chat | null>(null);
@@ -17,16 +17,40 @@ export default function ChatPage() {
 
     const [pendingRequests, setPendingRequests] = useState<FriendRequest[]>([]);
 
+    const [currentUser, setCurrentUser] = useState<User | null>(null);
+
+      const fetchCurrentUser = async () => {
+          try {
+                const user = await getCurrentUser();
+                setCurrentUser(user);
+          } catch (err) {
+                console.error(err);
+      }
+    };
+
+    useEffect(() => {
+        fetchCurrentUser();
+    }, []);
+
     const handleNewMessage = (newMessage: Message) => {
 
-
-        // If this message belongs to the currently open chat
         if (selectedChat && newMessage.chatId === selectedChat.id) {
               setMessages((prev) => [...prev, newMessage]);
         }
 
-        // TODO:
-        // Update chats sidebar
+        setChats((prevChats) => {
+            const chatIndex = prevChats.findIndex(chat => chat.id === newMessage.chatId);
+
+            if (chatIndex === -1) {
+                return prevChats;
+            }
+            
+            const updatedChats = [...prevChats];
+            const [chat] = updatedChats.splice(chatIndex, 1);
+            const updatedChat = { ...chat, lastMessage: newMessage.content, lastMessageAt: newMessage.createdAt };
+            return [updatedChat, ...updatedChats];
+              
+        })
 };
 
    useEffect(() => {
@@ -44,6 +68,8 @@ export default function ChatPage() {
         setPendingRequests((prevRequests) =>
           prevRequests.filter((request) => request.id !== requestId)
         );
+
+        await fetchChats();
     }
       catch(error){
         console.error("Error accepting friend request:", error);
@@ -61,8 +87,7 @@ export default function ChatPage() {
       }
     }
 
-    useEffect(() => {
-        const fetchChats = async () => {
+    const fetchChats = async () => {
             try { 
                   const response = await getChats();
                   setChats(response.data);
@@ -71,6 +96,8 @@ export default function ChatPage() {
                 console.error("Error fetching chats:", error);
             }
         };
+
+    useEffect(() => {
 
         fetchChats();
     }, []);
@@ -109,7 +136,7 @@ export default function ChatPage() {
   return (
     <div className="h-screen bg-slate-100 flex">
       <Sidebar chats={chats} selectedChat={selectedChat} onSelectChat={setSelectedChat} pendingRequests={pendingRequests} onAcceptRequest={onAcceptRequest} onDeclineRequest={onDeclineRequest} />
-      <ChatArea messages={messages} selectedChat={selectedChat} />
+      <ChatArea messages={messages} selectedChat={selectedChat} currentUser={currentUser} />
     </div>
   );
 }

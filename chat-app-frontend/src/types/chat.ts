@@ -24,4 +24,10 @@ interface FriendRequest {
   };
 }
 
-export type { Chat , Message, FriendRequest }
+export type User = {
+    id: number;
+    username: string;
+    relationship: "NONE" | "PENDING_SENT" | "PENDING_RECEIVED" | "FRIENDS";
+};
+
+export type { Chat , Message, FriendRequest, User }

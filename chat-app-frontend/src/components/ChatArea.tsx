@@ -8,9 +8,10 @@ import { sendMessage } from "../services/messageApi";
 type ChatAreaProps = {
   messages: Message[];
   selectedChat: Chat | null;
+  currentUser: { id: number; username: string } | null;
 };
 
-export default function ChatArea({ messages, selectedChat }: ChatAreaProps) {
+export default function ChatArea({ messages, selectedChat, currentUser }: ChatAreaProps) {
 
   const [text, setText] = useState("");
 
@@ -31,7 +32,7 @@ export default function ChatArea({ messages, selectedChat }: ChatAreaProps) {
     <main className="flex-1 flex flex-col bg-gray-50">
       <ChatHeader selectedChat={selectedChat} />
 
-      <MessageList messages={messages} />
+      <MessageList messages={messages} currentUser={currentUser} />
 
       <MessageInput text={text} onChangeText={setText} onSend={handleSendMessage} />
     </main>
