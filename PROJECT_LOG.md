@@ -1051,3 +1051,15 @@ Verified live messaging between two different browsers/users.
   4. Backend
   5. Frontend
 before implementing new features.
+
+# Day - 15 fixed socket bugs and debounced the search
+
+### Completed
+- Fixed Socket.IO reconnection after browser refresh.
+- Moved socket connection logic to the authenticated flow (`getCurrentUser`) instead of relying only on the login page.
+- Added debounced user search (400ms delay) using `useEffect`, `setTimeout`, and `clearTimeout`.
+- Verified both features are working correctly.
+
+### Decision
+- Feature development for Chat App v1 is considered complete.
+- Next phase: deployment instead of adding more frontend polish.

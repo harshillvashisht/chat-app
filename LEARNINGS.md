@@ -1489,3 +1489,14 @@ Why browser tabs can share authentication state and cause confusing test results
 - Add search debounce.
 - Review search feature edge cases.
 - Optional: Better timestamp formatting and loading states.
+
+# 2026-07-04
+
+### Socket Reconnection
+- Socket lifecycle should depend on authentication rather than the login action.
+- Refresh destroys the existing socket, so reconnect after successful authentication.
+
+### Debouncing
+- Debounce the value that triggers the API, not the API itself.
+- Implemented debounce using `useEffect`, `setTimeout`, and cleanup with `clearTimeout`.
+- This prevents unnecessary requests while keeping the input responsive.

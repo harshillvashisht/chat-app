@@ -27,10 +27,21 @@ export default function Sidebar({
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<User[]>([]);
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState(searchQuery);
 
-  const fetchSearchResults = async () => {
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery);
+    }, 400);
+
+    return () => {
+      clearTimeout(timer);
+    }
+  }, [searchQuery]);
+
+  const fetchSearchResults = async (query: string) => {
     try {
-      const response = await searchUsers(searchQuery);
+      const response = await searchUsers(query);
       setSearchResults(response.data.data);
       console.log("Search results:", response.data.data);
     } catch (error) {
@@ -39,16 +50,16 @@ export default function Sidebar({
   };
 
   useEffect(() => {
-    if (searchQuery.trim() === "") {
+    if (debouncedSearchQuery.trim() === "") {
       setSearchResults([]);
       return;
     }
 
-    fetchSearchResults();
+    fetchSearchResults(debouncedSearchQuery);
 
-}, [searchQuery]);
+}, [debouncedSearchQuery]);
 
-const isSearching = searchQuery.trim() !== "";
+const isSearching = debouncedSearchQuery.trim() !== "";
 
 const handleAddFriend = async (username: string) => {
     try {

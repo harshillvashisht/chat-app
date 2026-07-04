@@ -23,6 +23,9 @@ export default function ChatPage() {
           try {
                 const user = await getCurrentUser();
                 setCurrentUser(user);
+                if (!socket.connected) {
+                    socket.connect();
+              }
           } catch (err) {
                 console.error(err);
       }
