@@ -1,7 +1,8 @@
 import { ZodError } from "zod";
 import { ApiError } from "../utils/ApiError";
+import type { Response, Request, NextFunction,} from "express";
 
-export const errormiddleware = (err, req, res, next) => {
+export const errormiddleware = (err: unknown, req: Request, res: Response, next: NextFunction) => {
 
     if(err instanceof ApiError){
 
