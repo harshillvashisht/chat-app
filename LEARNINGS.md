@@ -1500,3 +1500,75 @@ Why browser tabs can share authentication state and cause confusing test results
 - Debounce the value that triggers the API, not the API itself.
 - Implemented debounce using `useEffect`, `setTimeout`, and cleanup with `clearTimeout`.
 - This prevents unnecessary requests while keeping the input responsive.
+
+# Learning Log
+
+## Biggest Technical Lessons
+
+### 1. Localhost is not Production
+
+Many issues only appeared after deployment.
+
+Examples:
+
+- Cookies
+- CORS
+- HTTPS
+- Environment variables
+- Build configuration
+
+---
+
+### 2. Debugging is a Process
+
+Instead of guessing:
+
+- Observe
+- Form a hypothesis
+- Test
+- Verify
+- Repeat
+
+---
+
+### 3. Socket.IO
+
+Learned:
+
+- Rooms
+- Authentication middleware
+- Connection lifecycle
+- Event-based communication
+
+---
+
+### 4. Authentication
+
+Learned:
+
+- JWT
+- HttpOnly cookies
+- SameSite
+- Secure cookies
+- Protected routes
+
+---
+
+### 5. Deployment
+
+Learned:
+
+- Vercel
+- Render
+- Environment variables
+- Production builds
+- SPA routing
+- Cloud debugging
+
+---
+
+## Personal Reflection
+
+This was my first complete full-stack application deployed to the internet.
+
+The project taught me much more than building features. Most of the learning came from debugging production issues and understanding how different parts of the stack interact.
