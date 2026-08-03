@@ -1,8 +1,8 @@
-import { getMessages } from "../controllers/message.controller";
 import prisma from "../lib/prisma"
 import { ApiError } from "../utils/ApiError";
+import { Prisma } from "@prisma/client";
 
-const sendmessage = async (chatId: number , userId: number, content: string) => {
+const sendmessage = async (chatId: number , userId: number, content: string, clientId: string) => {
 
     if (isNaN(chatId)) {
         throw new ApiError(400, "Invalid chat id");
@@ -31,26 +31,38 @@ const sendmessage = async (chatId: number , userId: number, content: string) => 
     }
 
     return await prisma.$transaction(async (tx) => {
-        const message = await tx.message.create({
-            data: {
-                content: content,
-                senderId: userId,
-                chatId: chatId
 
+        try {
+            const message = await tx.message.create({
+                data: {
+                    content: content,
+                    senderId: userId,
+                    chatId: chatId,
+                    clientMessageId: clientId
+                }
+            })
+
+            await tx.chat.update({
+                where:{
+                    id: chatId
+                },
+                data:{
+                    lastMessage: message.content,
+                    lastMessageAt: message.createdAt
+                }
+            })
+
+            return message
+        } catch (error) {
+            if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+                return await tx.message.findUnique({
+                    where: {
+                        clientMessageId: clientId
+                    }
+                })
             }
-        })
-
-        await tx.chat.update({
-            where:{
-                id: chatId
-            },
-            data:{
-                lastMessage: message.content,
-                lastMessageAt: message.createdAt
-            }
-        })
-
-        return message
+            throw error;
+        }
     })
 
 }

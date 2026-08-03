@@ -6,3 +6,4 @@ const router = Router();
 router.get("/chat", getChats)
 
 export default router;
+

@@ -1572,3 +1572,29 @@ Learned:
 This was my first complete full-stack application deployed to the internet.
 
 The project taught me much more than building features. Most of the learning came from debugging production issues and understanding how different parts of the stack interact.
+
+# 2026-08-03
+
+## What I Learned
+
+### Trust the Database for Uniqueness
+
+My initial idea was to check whether a message with the same `clientMessageId` already existed before inserting a new one. That approach would require an additional database query for every message sent.
+
+I learned that this is not the most efficient design.
+
+A better approach is to rely on the database's unique constraint:
+
+* Attempt to insert the message immediately.
+* If the insert succeeds, continue normally.
+* If the database reports a unique constraint violation (`P2002`), fetch and return the existing message.
+
+This optimizes for the common case because successful message sends only require the normal database operations, while the extra lookup is only performed when a retry actually occurs.
+
+### Database Constraints Can Simplify Application Logic
+
+Instead of implementing duplicate detection entirely in application code, the database can enforce uniqueness more reliably. The application only needs to handle the exceptional case, resulting in simpler logic and fewer unnecessary queries.
+
+## Takeaway
+
+A useful design principle I learned today is to optimize for the common execution path rather than the exceptional one. By allowing the database to enforce uniqueness and only handling duplicates when they actually occur, the implementation becomes both more efficient and more resilient to concurrent requests.

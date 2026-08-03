@@ -1140,3 +1140,34 @@ Users can:
 Project Status:
 
 ✅ Completed (Version 1)
+
+# Chat App v2 - Project log started
+
+# Day 1 - implemented schema changes and idempotency
+
+### Database Schema
+
+* Added a new `Attachment` model to support future file attachments.
+* Updated the `Message` model:
+
+  * Added a nullable `clientMessageId` field with a unique constraint to support idempotent message creation.
+  * Made `content` nullable so the schema can support attachment-only messages in future phases.
+* Generated and applied the corresponding Prisma migration.
+
+### Message Service Refactor
+
+Refactored the `sendMessage` service to support idempotent message creation.
+
+Instead of querying the database first to check whether a message with the same `clientMessageId` already existed, the service now:
+
+1. Attempts to create the message directly.
+2. Relies on the database's unique constraint to detect duplicate requests.
+3. If Prisma throws a `P2002` (unique constraint violation), fetches and returns the already-created message instead of creating a duplicate.
+
+This keeps the common execution path efficient while still correctly handling client retries.
+
+## Notes
+
+* Attachment storage and upload integration are intentionally deferred to a later project phase.
+* This work lays the foundation for retry-safe message delivery and future reconnect synchronization.
+

@@ -8,9 +8,10 @@ export const sendMessage = async (req: Request, res: Response, next: NextFunctio
         const chatId = +req.params.chatId;
         const userId = req.user.id;
         const content = req.body.content;
+        const clientId = req.body.clientId;
         
 
-        const result = await messageService.sendmessage(chatId, userId, content);
+        const result = await messageService.sendmessage(chatId, userId, content, clientId);
 
         const io = getIO();
 

@@ -13,6 +13,12 @@ enum FriendRequestStatus {
   REJECTED
 }
 
+enum AttachmentType {
+  IMAGE
+  AUDIO
+  DOCUMENT
+}
+
 model User {
   id        Int      @id @default(autoincrement())
   username  String   @unique
@@ -31,10 +37,12 @@ model Message {
   chatId    Int
   chat      Chat     @relation(fields: [chatId], references: [id])
   senderId  Int
+  clientMessageId String?  @unique
   sender User   @relation("SentMessages", fields: [senderId], references: [id])
-  content String
+  content String?
   createdAt DateTime @default(now())
   @@index([chatId, createdAt])
+  attachments Attachment[]
 }
 
 model FriendRequest {
@@ -60,5 +68,16 @@ model Chat {
   lastMessageAt DateTime?
   createdAt DateTime @default(now())
   @@unique([participant1Id, participant2Id])
+  @@index([lastMessageAt])
   messages Message[]
+}
+
+model Attachment {
+  id       Int      @id @default(autoincrement())
+  messageId Int
+  message   Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  url       String
+  type      AttachmentType
+  createdAt DateTime @default(now())
+  
 }
