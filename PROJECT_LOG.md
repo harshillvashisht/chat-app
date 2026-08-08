@@ -1171,3 +1171,101 @@ This keeps the common execution path efficient while still correctly handling cl
 * Attachment storage and upload integration are intentionally deferred to a later project phase.
 * This work lays the foundation for retry-safe message delivery and future reconnect synchronization.
 
+# Day 2 - Message reliability — clientMessageId, optimistic UI, socket reconciliation, and message states.
+
+### Work Completed
+
+1. Frontend clientMessageId
+- Added clientMessageId to the frontend Message type.
+- Generated a unique clientMessageId using crypto.randomUUID() whenever a new message is sent.
+- Passed the clientMessageId along with the message content to the backend.
+- Kept clientMessageId as the stable identifier connecting the optimistic message, database message, and Socket.IO message.
+
+2. UIMessage and Message States
+- Introduced a separate UIMessage type to represent messages while they are being processed on the client.
+- Added message status:
+  - sending
+  - sent
+  - failed
+- Optimistic messages do not have a database id yet, so the database id remains optional on UIMessage.
+
+3. Optimistic UI
+- Implemented optimistic message insertion.
+- A message is added to the UI immediately when the user presses Send instead of waiting for the backend.
+- Newly created messages initially have status = "sending".
+- Historical messages fetched from the backend are initialized with status = "sent".
+
+4. Socket Echo / Duplicate Message Bug
+- Discovered that the server broadcasts messages using io.to(chatId), which also sends the newly-created message back to the sender.
+- This caused the same message to appear twice:
+  - once from the optimistic UI
+  - once from the Socket.IO event
+- Fixed this by introducing an upsertMessage() function based on clientMessageId.
+- If the clientMessageId already exists in the local message list, the incoming message updates the existing message instead of being appended.
+- If it does not exist, the message is inserted normally.
+
+5. Message List Identity
+- Changed the React message key from the database id to clientMessageId.
+- This allows optimistic messages and confirmed server messages to use the same stable identity.
+- Existing database messages were backfilled with clientMessageId before relying on it as the message identity.
+
+6. Failure Handling
+- Added failure handling to the send operation.
+- If the HTTP request fails, the optimistic message is changed from "sending" to "failed".
+- The failed message remains visible instead of silently disappearing.
+
+7. Message Status UI
+- Added temporary visual indicators for:
+  - Sending
+  - Sent
+  - Failed
+- Verified that the message correctly transitions between these states.
+
+### Testing
+
+Successfully tested:
+
+- Normal message sending.
+- Multiple messages sent quickly.
+- Optimistic message appearing immediately.
+- Sending → Sent transition.
+- Sending → Failed transition.
+- Two browser tabs connected to the same chat.
+- Sender receiving its own Socket.IO message without creating a duplicate.
+- Receiver getting exactly one copy of the message.
+- No React duplicate-key warnings.
+
+### Current Message Flow
+
+User sends message
+    ↓
+Generate clientMessageId
+    ↓
+Create optimistic UIMessage
+status = sending
+    ↓
+Add immediately to UI
+    ↓
+HTTP request → backend
+    ↓
+Backend saves message
+    ↓
+Backend emits Socket.IO event
+    ↓
+Client receives message
+    ↓
+Match using clientMessageId
+    ↓
+Upsert existing optimistic message
+    ↓
+status = sent
+
+If HTTP request fails:
+
+sending → failed
+
+### Next Task
+
+Implement retry functionality for failed messages.
+
+The retry flow will use the same clientMessageId so that the backend's idempotency mechanism can prevent duplicate database messages.

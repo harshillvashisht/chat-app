@@ -7,17 +7,43 @@ import { getMessages } from "../services/messageApi.ts";
 import { acceptRequest, declineRequest, getRequests } from "../services/friendRequestApi.ts";
 import { socket } from "../socket/socket.ts";
 import { getCurrentUser } from "../services/authApi.ts";
+import type { UIMessage } from "../types/chat";
 
 export default function ChatPage() {
     const [selectedChat, setSelectedChat] = useState<Chat | null>(null);
 
-    const [messages, setMessages] = useState<Message[]>([]);
+    const [messages, setMessages] = useState<UIMessage[]>([]);
 
     const [chats, setChats] = useState<Chat[]>([]);
 
     const [pendingRequests, setPendingRequests] = useState<FriendRequest[]>([]);
 
     const [currentUser, setCurrentUser] = useState<User | null>(null);
+
+    const upsertMessage = (
+        prev: UIMessage[],
+        incoming: UIMessage
+    ): UIMessage[] => {
+        const index = prev.findIndex(
+            message => message.clientMessageId === incoming.clientMessageId
+        );
+
+        if (index === -1) {
+            return [...prev, incoming];
+        }
+
+        const updated = [...prev];
+        updated[index] = {
+            ...prev[index],
+            ...incoming
+        };
+
+        return updated;
+    };
+
+    const handleOptimisticMessage = (message: UIMessage) => {
+        setMessages(prev => upsertMessage(prev, message));
+    };
 
       const fetchCurrentUser = async () => {
           try {
@@ -35,10 +61,25 @@ export default function ChatPage() {
         fetchCurrentUser();
     }, []);
 
-    const handleNewMessage = (newMessage: Message) => {
+    const handleMessageFailed = (clientMessageId: string) => {
+        setMessages(prev =>
+            prev.map(message =>
+                message.clientMessageId === clientMessageId
+                    ? { ...message, status: "failed" as const }
+                    : message
+            )
+        );
+    };
+
+    const handleNewMessage = (newMessage: UIMessage) => {
 
         if (selectedChat && newMessage.chatId === selectedChat.id) {
-              setMessages((prev) => [...prev, newMessage]);
+               setMessages(prev =>
+                upsertMessage(prev, {
+                    ...newMessage,
+                    status: "sent"
+                })
+                );
         }
 
         setChats((prevChats) => {
@@ -123,7 +164,7 @@ export default function ChatPage() {
             if (selectedChat) {
                 try {
                     const response = await getMessages(selectedChat.id);
-                    setMessages(response.data);
+                    setMessages(response.data.map((m: Message) => ({ ...m, status: "sent" as const })));
                 } catch (error) {
                     console.error("Error fetching messages:", error);
                 }
@@ -139,7 +180,7 @@ export default function ChatPage() {
   return (
     <div className="h-screen bg-slate-100 flex">
       <Sidebar chats={chats} selectedChat={selectedChat} onSelectChat={setSelectedChat} pendingRequests={pendingRequests} onAcceptRequest={onAcceptRequest} onDeclineRequest={onDeclineRequest} />
-      <ChatArea messages={messages} selectedChat={selectedChat} currentUser={currentUser} />
+      <ChatArea messages={messages} selectedChat={selectedChat} currentUser={currentUser}  onOptimisticMessage={handleOptimisticMessage} onMessageFailed={handleMessageFailed}/>
     </div>
   );
 }

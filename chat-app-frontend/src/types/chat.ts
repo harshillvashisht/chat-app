@@ -10,10 +10,18 @@ interface Chat {
 
 interface Message {
   id: number;
+  clientMessageId: string;
   chatId: number;
   senderId: number;
   content: string;
   createdAt: string;
+}
+
+export type MessageStatus = "sending" | "sent" | "failed";
+
+export interface UIMessage extends Omit<Message, "id"> {
+  id?: number; 
+  status: MessageStatus;
 }
 
 interface FriendRequest {

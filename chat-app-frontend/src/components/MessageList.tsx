@@ -1,8 +1,8 @@
-import type { Message } from "../types/chat";
+import type { Message, UIMessage } from "../types/chat";
 import { useEffect, useRef } from "react";
 
 type MessageListProps = {
-  messages: Message[];
+  messages: UIMessage[];
   currentUser: { id: number; username: string } | null;
 };
 
@@ -23,7 +23,7 @@ export default function MessageList({ messages, currentUser }: MessageListProps)
 
         return (
           <div
-            key={message.id}
+            key={message.clientMessageId}
             className={`flex ${
               isOwnMessage ? "justify-end" : "justify-start"
             }`}
@@ -46,6 +46,18 @@ export default function MessageList({ messages, currentUser }: MessageListProps)
               >
                 {message.createdAt}
               </p>
+
+              {message.status === "sending" && (
+                <span>Sending...</span>
+              )}
+
+              {message.status === "sent" && (
+                <span>Sent</span>
+              )}
+
+              {message.status === "failed" && (
+                  <span>Failed</span>
+              )}
             </div>
           </div>
         );
