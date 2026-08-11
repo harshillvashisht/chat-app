@@ -1813,3 +1813,158 @@ backend receives request again
 idempotency prevents duplicate creation
     ↓
 message eventually becomes sent
+
+# 2026-08-11
+
+### 1. Retry is not inherently safe
+
+I learned that simply retrying a failed network request can create duplicate operations.
+
+A request can actually reach the backend and successfully modify the database while the response is lost before reaching the client.
+
+For example:
+
+```text
+Client
+  │
+  │ send message
+  ▼
+Backend
+  │
+  │ message created successfully
+  ▼
+Database
+  │
+  X response lost
+  │
+Client thinks request failed
+  │
+  │ retry
+  ▼
+Backend
+```
+
+Without idempotency, the retry could create the same message twice.
+
+Using a stable `clientMessageId` means the retry represents the **same logical operation**, rather than a new message.
+
+Therefore:
+
+> **Retry logic on the frontend depends on idempotency on the backend to be safe.**
+
+---
+
+### 2. Important lesson about Prisma transactions and error handling
+
+While implementing the backend idempotency logic, I encountered an important bug in our previous implementation.
+
+The initial approach placed the duplicate/idempotency handling inside the Prisma transaction:
+
+```text
+transaction
+   │
+   ├── create message
+   │
+   └── catch duplicate error
+          ↓
+       find existing message
+```
+
+The problem is that when the transaction fails, the transaction is **rolled back** and Prisma exits the transaction callback with an error.
+
+The code inside the transaction does not continue executing as though the failed operation simply returned a normal result.
+
+Therefore, our "find the existing message" logic needed to happen **outside the transaction**, in the outer `catch`.
+
+The corrected conceptual flow is:
+
+```text
+try
+   │
+   └── transaction
+          │
+          └── create message
+                 │
+                 ├── success → return message
+                 │
+                 └── P2002
+                        ↓
+                    transaction fails
+                        ↓
+catch
+   │
+   └── detect P2002
+          │
+          └── query existing message
+```
+
+This was a valuable lesson because I initially thought of the transaction's `catch` as a normal place to recover from the failed create operation. Instead, the transaction boundary determines whether the code inside it can continue.
+
+### General lesson
+
+> **A transaction callback is not just a normal block of code with rollback added to it. Once the transaction fails, control leaves the transaction and the error must be handled at the appropriate outer boundary.**
+
+This also helped me understand why error handling needs to respect the boundaries of database transactions rather than treating database errors like ordinary conditional branches.
+
+---
+
+### 3. State ownership and component responsibility
+
+While implementing retry, I initially thought retry logic should live in `ChatArea` because normal message sending already happens there.
+
+After examining the dependencies, I realized that retry does not depend on `ChatArea`'s local input state.
+
+A new message needs:
+
+* input text
+* selected chat
+* current user
+* a newly generated `clientMessageId`
+
+A retry already has everything it needs inside the existing `UIMessage`:
+
+* `chatId`
+* `content`
+* `clientMessageId`
+
+The message state itself is owned by `ChatPage`, so retry belongs there.
+
+This reinforced an architectural principle:
+
+> **A piece of logic should be placed according to the state and dependencies it actually needs, not simply because it resembles another operation.**
+
+`MessageList` handles presentation and user interaction, `ChatArea` composes the chat UI, and `ChatPage` owns the message state and message-level operations.
+
+---
+
+### 4. Reusing existing reconciliation
+
+For a successful retry, I did not manually change the message status to `sent`.
+
+Instead, the existing Socket.IO `new_message` flow handles confirmation:
+
+```text
+retry
+  ↓
+sendMessage()
+  ↓
+backend
+  ↓
+new_message
+  ↓
+handleNewMessage()
+  ↓
+upsertMessage()
+  ↓
+sent
+```
+
+This avoids creating a second success/reconciliation path and keeps message confirmation centralized.
+
+### Main takeaway
+
+Today's work connected several concepts together:
+
+**Optimistic UI + retries + idempotency + transactions + realtime reconciliation**
+
+A reliable messaging system is not created by adding a Retry button. The frontend, backend, database, and realtime layer all have to cooperate so that an uncertain network outcome does not become a duplicate or inconsistent message.

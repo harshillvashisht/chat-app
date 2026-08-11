@@ -3,7 +3,7 @@ import Sidebar from "../components/Sidebar";
 import ChatArea from "../components/ChatArea";
 import type { Chat, Message, FriendRequest, User } from "../types/chat";
 import { getChats }  from "../services/chatApi.ts";
-import { getMessages } from "../services/messageApi.ts";
+import { getMessages, sendMessage } from "../services/messageApi.ts";
 import { acceptRequest, declineRequest, getRequests } from "../services/friendRequestApi.ts";
 import { socket } from "../socket/socket.ts";
 import { getCurrentUser } from "../services/authApi.ts";
@@ -38,7 +38,9 @@ export default function ChatPage() {
             ...incoming
         };
 
-        return updated;
+        return updated.sort(
+        (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+    );
     };
 
     const handleOptimisticMessage = (message: UIMessage) => {
@@ -97,6 +99,8 @@ export default function ChatPage() {
         })
 };
 
+
+
    useEffect(() => {
 
     socket.on("new_message", handleNewMessage);
@@ -105,6 +109,27 @@ export default function ChatPage() {
         socket.off("new_message", handleNewMessage);
     };
 }, [selectedChat]);
+
+    const handleRetryMessage = async (message: UIMessage) => {
+        setMessages(prev =>
+            prev.map(m =>
+                m.clientMessageId === message.clientMessageId
+                    ? { ...m, status: "sending" as const }
+                    : m
+            )
+        );
+
+        try {
+            await sendMessage(
+                message.chatId,
+                message.content,
+                message.clientMessageId
+            );
+        }
+        catch (error) {
+            handleMessageFailed(message.clientMessageId);
+        }
+    };
 
     const onAcceptRequest = async (requestId: number) => {
       try{
@@ -180,7 +205,7 @@ export default function ChatPage() {
   return (
     <div className="h-screen bg-slate-100 flex">
       <Sidebar chats={chats} selectedChat={selectedChat} onSelectChat={setSelectedChat} pendingRequests={pendingRequests} onAcceptRequest={onAcceptRequest} onDeclineRequest={onDeclineRequest} />
-      <ChatArea messages={messages} selectedChat={selectedChat} currentUser={currentUser}  onOptimisticMessage={handleOptimisticMessage} onMessageFailed={handleMessageFailed}/>
+      <ChatArea messages={messages} selectedChat={selectedChat} currentUser={currentUser}  onOptimisticMessage={handleOptimisticMessage} onMessageFailed={handleMessageFailed} onRetryMessage={handleRetryMessage} />
     </div>
   );
 }

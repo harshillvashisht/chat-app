@@ -1269,3 +1269,59 @@ sending → failed
 Implement retry functionality for failed messages.
 
 The retry flow will use the same clientMessageId so that the backend's idempotency mechanism can prevent duplicate database messages.
+
+# Day 3 - Message retry , fixed old idempotency logic 
+
+Continued development of Chat App v2 with a focus on reliable message delivery.
+
+Implemented and verified:
+
+* Client-generated `clientMessageId` for every outgoing message.
+* Backend idempotency using `clientMessageId`.
+* Optimistic message rendering on the frontend.
+* Duplicate-message prevention when the same message request is received multiple times.
+* Frontend message states:
+
+  * `sending`
+  * `sent`
+  * `failed`
+* Retry functionality for failed messages.
+* Retry reuses the original `clientMessageId` instead of generating a new ID.
+* Retry state transitions:
+
+  * `failed → sending → sent`
+  * `failed → sending → failed`
+* Retry success continues to use the existing Socket.IO `new_message` event for final message reconciliation.
+* Tested normal sending, failed sending, successful retry, repeated retry failure, and duplicate prevention.
+
+### Reliability flow
+
+```text
+User sends message
+       ↓
+Optimistic UI
+       ↓
+clientMessageId generated
+       ↓
+Backend
+       ↓
+Database idempotency check
+       ↓
+Socket confirmation
+       ↓
+Message marked sent
+
+If request fails:
+       ↓
+Message marked failed
+       ↓
+User clicks Retry
+       ↓
+Same clientMessageId reused
+       ↓
+Backend safely processes/reconciles request
+```
+
+### Result
+
+The messaging system now handles temporary send failures without requiring the user to recreate the message manually, while the existing backend idempotency mechanism protects retries from creating duplicate messages.

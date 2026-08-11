@@ -1,7 +1,7 @@
 import ChatHeader from "./ChatHeader";
 import MessageList from "./MessageList";
 import MessageInput from "./MessageInput";
-import type { Chat, Message, UIMessage } from "../types/chat";
+import type { Chat, UIMessage } from "../types/chat";
 import { useState } from "react";
 import { sendMessage } from "../services/messageApi";
 
@@ -11,9 +11,10 @@ type ChatAreaProps = {
   currentUser: { id: number; username: string } | null;
   onOptimisticMessage: (message: UIMessage) => void;
   onMessageFailed: (clientMessageId: string) => void;
+  onRetryMessage: (message: UIMessage) => void;
 };
 
-export default function ChatArea({ messages, selectedChat, currentUser, onOptimisticMessage , onMessageFailed }: ChatAreaProps) {
+export default function ChatArea({ messages, selectedChat, currentUser, onOptimisticMessage , onMessageFailed, onRetryMessage }: ChatAreaProps) {
 
   const [text, setText] = useState("");
 
@@ -54,7 +55,7 @@ export default function ChatArea({ messages, selectedChat, currentUser, onOptimi
     <main className="flex-1 flex flex-col bg-gray-50">
       <ChatHeader selectedChat={selectedChat} />
 
-      <MessageList messages={messages} currentUser={currentUser} />
+      <MessageList messages={messages} currentUser={currentUser} onRetryMessage={onRetryMessage} />
 
       <MessageInput text={text} onChangeText={setText} onSend={handleSendMessage} />
     </main>

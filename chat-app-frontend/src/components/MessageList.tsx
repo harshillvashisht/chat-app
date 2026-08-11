@@ -1,12 +1,13 @@
-import type { Message, UIMessage } from "../types/chat";
+import type {  UIMessage } from "../types/chat";
 import { useEffect, useRef } from "react";
 
 type MessageListProps = {
   messages: UIMessage[];
   currentUser: { id: number; username: string } | null;
+  onRetryMessage: (message: UIMessage) => void;
 };
 
-export default function MessageList({ messages, currentUser }: MessageListProps) {
+export default function MessageList({ messages, currentUser, onRetryMessage }: MessageListProps) {
 
   const bottomRef = useRef<HTMLDivElement | null>(null);
 
@@ -56,7 +57,13 @@ export default function MessageList({ messages, currentUser }: MessageListProps)
               )}
 
               {message.status === "failed" && (
+                <div>
                   <span>Failed</span>
+                  <button
+                    onClick={() => onRetryMessage(message)} >
+                    Retry
+                  </button>
+                </div>
               )}
             </div>
           </div>

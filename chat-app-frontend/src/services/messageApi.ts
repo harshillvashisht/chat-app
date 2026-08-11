@@ -8,5 +8,5 @@ export async function sendMessage(chatId: number, content: string, clientMessage
     return api.post(`messages/chat/${chatId}`, {
         content,
         clientId: clientMessageId
-    })
+    });
 }

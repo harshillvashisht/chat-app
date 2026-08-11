@@ -30,41 +30,45 @@ const sendmessage = async (chatId: number , userId: number, content: string, cli
         throw new ApiError(400 , "content is not valid")
     }
 
-    return await prisma.$transaction(async (tx) => {
+    try {
+        return await prisma.$transaction(async (tx) => {
 
-        try {
             const message = await tx.message.create({
-                data: {
-                    content: content,
-                    senderId: userId,
-                    chatId: chatId,
-                    clientMessageId: clientId
-                }
-            })
-
-            await tx.chat.update({
-                where:{
-                    id: chatId
-                },
-                data:{
-                    lastMessage: message.content,
-                    lastMessageAt: message.createdAt
-                }
-            })
-
-            return message
-        } catch (error) {
-            if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
-                return await tx.message.findUnique({
-                    where: {
+                    data: {
+                        content: content,
+                        senderId: userId,
+                        chatId: chatId,
                         clientMessageId: clientId
                     }
                 })
-            }
-            throw error;
-        }
-    })
 
+                await tx.chat.update({
+                    where:{
+                        id: chatId
+                    },
+                    data:{
+                        lastMessage: message.content,
+                        lastMessageAt: message.createdAt
+                    }
+                })
+
+                return message
+        })
+    } catch (error) {
+        if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+            const exisiting = await prisma.message.findUnique({
+                where: {
+                    clientMessageId: clientId
+                }
+            });
+
+            if(exisiting){
+                return exisiting
+            }
+
+            throw new ApiError(500, "Internal server error");
+        } 
+    }
 }
 
 const getmessages = async (chatId: number, userId: number) =>{
