@@ -103,10 +103,19 @@ export default function ChatPage() {
 
    useEffect(() => {
 
+    const handleReconnect = () => {
+        fetchChats();
+        if (selectedChat) {
+            fetchMessages();
+        }
+    };
+
     socket.on("new_message", handleNewMessage);
+    socket.on("connect", handleReconnect);
 
     return () => {
         socket.off("new_message", handleNewMessage);
+        socket.off("connect", handleReconnect);
     };
 }, [selectedChat]);
 
@@ -184,8 +193,7 @@ export default function ChatPage() {
         fetchPendingRequests();
     }, []);
 
-    useEffect(() => {
-        const fetchMessages = async () => {
+    const fetchMessages = async () => {
             if (selectedChat) {
                 try {
                     const response = await getMessages(selectedChat.id);
@@ -198,6 +206,8 @@ export default function ChatPage() {
                 return setMessages([]);
             }
         };
+
+    useEffect(() => {
 
         fetchMessages();
     }, [selectedChat]);

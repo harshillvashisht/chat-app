@@ -5,6 +5,8 @@ export const socket = io(import.meta.env.VITE_SOCKET_URL, {
     withCredentials: true,
 });
 
+(window as any).socket = socket;
+
 socket.on("connect", () => {
     console.log("✅ Socket connected:", socket.id);
 });
