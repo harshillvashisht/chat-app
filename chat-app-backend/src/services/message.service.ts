@@ -71,7 +71,7 @@ const sendmessage = async (chatId: number , userId: number, content: string, cli
     }
 }
 
-const getmessages = async (chatId: number, userId: number) =>{
+const getmessages = async (chatId: number, userId: number, after?: number) =>{
 
     if (isNaN(chatId)) {
         throw new ApiError(400, "Invalid chat id");
@@ -97,10 +97,11 @@ const getmessages = async (chatId: number, userId: number) =>{
 
     const result = await prisma.message.findMany({
         where:{
-            chatId: chatId
+            chatId: chatId,
+            ...(after && { id: { gt: after } })
         },
         orderBy:{
-            createdAt: "asc"
+            id: "asc"
         }
     })
 

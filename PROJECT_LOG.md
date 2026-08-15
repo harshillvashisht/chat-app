@@ -1325,3 +1325,47 @@ Backend safely processes/reconciles request
 ### Result
 
 The messaging system now handles temporary send failures without requiring the user to recreate the message manually, while the existing backend idempotency mechanism protects retries from creating duplicate messages.
+
+
+# Day 4 - Reconnection & Message Synchronization
+
+**Branch:** `feature/reconnection-sync-receipts`
+
+Picked up Chat App v2 after a break and continued the reliability/scalability roadmap.
+
+### Completed
+
+- Reviewed the existing Socket.IO connection architecture.
+- Confirmed that Socket.IO handles transport-level reconnection automatically.
+- Confirmed that every new socket connection:
+  - Re-runs JWT authentication middleware.
+  - Reconstructs the user's chat room memberships through `joinUserRooms()`.
+- Added frontend reconnect handling through the Socket.IO `connect` event.
+- On reconnect:
+  - Refresh chat/sidebar state using `fetchChats()`.
+  - Synchronize the currently selected chat using `fetchMessages()`.
+- Added cursor-based message synchronization using the auto-incrementing `Message.id`.
+- Added optional `after` cursor support:
+  - No cursor → fetch full message history.
+  - `after=<messageId>` → fetch only messages after that ID.
+- Fixed a React stale-closure issue in the reconnect handler by using `useRef` to access the latest message state.
+- Tested the complete flow using two browser clients:
+  - Client A disconnects.
+  - Client B sends messages while A is disconnected.
+  - Client A reconnects.
+  - Missed messages are successfully synchronized.
+  - `after=<id>` delta synchronization was verified through the actual API response.
+
+### Milestone
+
+- ✅ Socket.IO reconnection
+- ✅ JWT re-authentication
+- ✅ Room reconstruction
+- ✅ Reconnect synchronization
+- ✅ Cursor-based message synchronization
+
+### Next
+
+- Delivery receipts
+- Read receipts
+- End-to-end encryption later in the larger roadmap

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Sidebar from "../components/Sidebar";
 import ChatArea from "../components/ChatArea";
 import type { Chat, Message, FriendRequest, User } from "../types/chat";
@@ -19,6 +19,12 @@ export default function ChatPage() {
     const [pendingRequests, setPendingRequests] = useState<FriendRequest[]>([]);
 
     const [currentUser, setCurrentUser] = useState<User | null>(null);
+
+    const messagesRef = useRef<UIMessage[]>([]);
+
+    useEffect(() => {
+        messagesRef.current = messages;
+    }, [messages]);
 
     const upsertMessage = (
         prev: UIMessage[],
@@ -106,7 +112,9 @@ export default function ChatPage() {
     const handleReconnect = () => {
         fetchChats();
         if (selectedChat) {
-            fetchMessages();
+            const currentMessages = messagesRef.current;
+            const lastId = currentMessages.length > 0 ? currentMessages[currentMessages.length - 1].id : undefined;
+            fetchMessages(lastId);
         }
     };
 
@@ -193,11 +201,15 @@ export default function ChatPage() {
         fetchPendingRequests();
     }, []);
 
-    const fetchMessages = async () => {
+    const fetchMessages = async (after?: number) => {
             if (selectedChat) {
                 try {
-                    const response = await getMessages(selectedChat.id);
-                    setMessages(response.data.map((m: Message) => ({ ...m, status: "sent" as const })));
+                    const response = await getMessages(selectedChat.id, after );
+                    setMessages(prev => {
+                        const incoming = response.data.map((m: Message) => ({ ...m, status: "sent" as const }));
+                        if (!after) return incoming; 
+                        return incoming.reduce((acc: UIMessage[], msg: UIMessage) => upsertMessage(acc, msg), prev); 
+                    });
                 } catch (error) {
                     console.error("Error fetching messages:", error);
                 }

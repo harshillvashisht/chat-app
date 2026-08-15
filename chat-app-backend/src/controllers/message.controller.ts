@@ -29,8 +29,9 @@ export const getMessages = async (req: Request, res: Response, next: NextFunctio
     try{
         const chatId = +req.params.chatId;
         const userId = req.user.id;
+        const after = req.query.after ? +req.query.after : undefined;
         
-        const result = await messageService.getmessages(chatId, userId);
+        const result = await messageService.getmessages(chatId, userId, after);
 
         
 

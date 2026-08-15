@@ -1,7 +1,9 @@
 import { api } from "./axios";
 
-export async function getMessages(chatId: number){
-    return api.get(`messages/chat/${chatId}`)
+export async function getMessages(chatId: number, after?: number){
+    return api.get(`messages/chat/${chatId}`, {
+        params: after ? { after } : {},
+    })
 }
 
 export async function sendMessage(chatId: number, content: string, clientMessageId: string) {
