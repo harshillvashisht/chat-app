@@ -6,9 +6,10 @@ export async function getMessages(chatId: number, after?: number){
     })
 }
 
-export async function sendMessage(chatId: number, content: string, clientMessageId: string) {
+export async function sendMessage(chatId: number, content: string, clientMessageId: string, attachments?: { objectKey: string; mimeType: string; fileName: string; fileSize: number }[]) {
     return api.post(`messages/chat/${chatId}`, {
         content,
-        clientId: clientMessageId
+        clientId: clientMessageId,
+        attachments
     });
 }

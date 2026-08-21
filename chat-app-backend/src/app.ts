@@ -5,6 +5,7 @@ import chatRoutes from "./routes/chat.routes";
 import { authmiddleware } from "./middleware/auth.middleware";
 import userRoutes from "./routes/user.routes";
 import friendRequestRoutes from "./routes/friendRequest.routes";
+import AttachmentRoute from "./routes/attachments.routes";
 import MessageRoute from "./routes/message.routes";
 import cookieParser from "cookie-parser";
 import cors from "cors";
@@ -28,6 +29,7 @@ app.use("/api/v1" , authmiddleware, chatRoutes );
 app.use("/api/v1/users", authmiddleware,  userRoutes);
 app.use("/api/v1/friendRequest", authmiddleware, friendRequestRoutes);
 app.use("/api/v1/messages", authmiddleware, MessageRoute)
+app.use("/api/v1/attachments", authmiddleware, AttachmentRoute);
 
 
 app.use(errormiddleware)

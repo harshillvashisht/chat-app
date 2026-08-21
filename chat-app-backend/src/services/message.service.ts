@@ -1,8 +1,10 @@
 import prisma from "../lib/prisma"
+import { AttachmentInput } from "../types/attachmenttype";
 import { ApiError } from "../utils/ApiError";
 import { Prisma } from "@prisma/client";
+import { buildMessagePreview , withAttachmentUrls } from "../utils/buildmessagepreview";
 
-const sendmessage = async (chatId: number , userId: number, content: string, clientId: string) => {
+const sendmessage = async (chatId: number , userId: number, content: string, clientId: string, attachments: AttachmentInput[] = []) => {
 
     if (isNaN(chatId)) {
         throw new ApiError(400, "Invalid chat id");
@@ -26,48 +28,63 @@ const sendmessage = async (chatId: number , userId: number, content: string, cli
         throw new ApiError(403, "you are not authorised to see this chat")
     }
 
-    if(!content.trim()){
-        throw new ApiError(400 , "content is not valid")
+    if (!content?.trim() && attachments.length === 0) {
+        throw new ApiError(400, "Message must have content or at least one attachment")
     }
 
     try {
         return await prisma.$transaction(async (tx) => {
 
             const message = await tx.message.create({
-                    data: {
-                        content: content,
-                        senderId: userId,
-                        chatId: chatId,
-                        clientMessageId: clientId
+                data: {
+                    content: content?.trim() ? content : null,
+                    senderId: userId,
+                    chatId: chatId,
+                    clientMessageId: clientId,
+                    attachments: {
+                        create: attachments.map(a => ({
+                            objectKey: a.objectKey,
+                            type: a.mimeType.startsWith("image/") ? "IMAGE"
+                                : a.mimeType.startsWith("audio/") ? "AUDIO"
+                                : "DOCUMENT",
+                            mimeType: a.mimeType,
+                            fileName: a.fileName,
+                            fileSize: a.fileSize,
+                            duration: a.duration ?? null,
+                        }))
                     }
-                })
+                },
+                include: { attachments: true } 
+            })
+
+                const previewMessage = buildMessagePreview(message.content, attachments);
 
                 await tx.chat.update({
                     where:{
                         id: chatId
                     },
                     data:{
-                        lastMessage: message.content,
+                        lastMessage: previewMessage,
                         lastMessageAt: message.createdAt
                     }
                 })
 
-                return message
+                return withAttachmentUrls({ ...message, lastMessagePreview: previewMessage })
         })
     } catch (error) {
         if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
-            const exisiting = await prisma.message.findUnique({
-                where: {
-                    clientMessageId: clientId
-                }
+            const existing = await prisma.message.findUnique({
+                where: { clientMessageId: clientId },
+                include: { attachments: true }   
             });
 
-            if(exisiting){
-                return exisiting
+            if (existing) {
+                return withAttachmentUrls(existing);
             }
 
             throw new ApiError(500, "Internal server error");
-        } 
+        }
+        throw error; 
     }
 }
 
@@ -102,10 +119,11 @@ const getmessages = async (chatId: number, userId: number, after?: number) =>{
         },
         orderBy:{
             id: "asc"
-        }
+        },
+        include: { attachments: true }
     })
 
-    return result
+    return result.map(withAttachmentUrls)
 
 }
 

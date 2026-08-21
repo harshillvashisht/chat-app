@@ -22,6 +22,14 @@ export type MessageStatus = "sending" | "sent" | "failed";
 export interface UIMessage extends Omit<Message, "id"> {
   id?: number; 
   status: MessageStatus;
+  lastMessagePreview: string;
+  attachments?: {
+    objectKey: string;
+    mimeType: string;
+    fileName: string;
+    fileSize: number;
+    url: string;
+  }[]
 }
 
 interface FriendRequest {

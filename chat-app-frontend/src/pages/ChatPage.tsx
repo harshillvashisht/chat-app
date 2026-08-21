@@ -99,7 +99,7 @@ export default function ChatPage() {
             
             const updatedChats = [...prevChats];
             const [chat] = updatedChats.splice(chatIndex, 1);
-            const updatedChat = { ...chat, lastMessage: newMessage.content, lastMessageAt: newMessage.createdAt };
+            const updatedChat = { ...chat, lastMessage: newMessage.lastMessagePreview, lastMessageAt: newMessage.createdAt };
             return [updatedChat, ...updatedChats];
               
         })

@@ -73,11 +73,14 @@ model Chat {
 }
 
 model Attachment {
-  id       Int      @id @default(autoincrement())
+  id        Int            @id @default(autoincrement())
   messageId Int
-  message   Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
-  url       String
+  message   Message        @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  objectKey String         // e.g. "attachments/<uuid>.jpg" — the actual storage identity
   type      AttachmentType
-  createdAt DateTime @default(now())
-  
+  mimeType  String
+  fileName  String         // original name, display-only, never used as storage identity
+  fileSize  Int
+  duration  Int?
+  createdAt DateTime       @default(now())
 }

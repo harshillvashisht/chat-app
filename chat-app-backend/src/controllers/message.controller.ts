@@ -9,9 +9,10 @@ export const sendMessage = async (req: Request, res: Response, next: NextFunctio
         const userId = req.user.id;
         const content = req.body.content;
         const clientId = req.body.clientId;
+        const attachments = req.body.attachments ?? []; 
         
 
-        const result = await messageService.sendmessage(chatId, userId, content, clientId);
+        const result = await messageService.sendmessage(chatId, userId, content, clientId, attachments);
 
         const io = getIO();
 

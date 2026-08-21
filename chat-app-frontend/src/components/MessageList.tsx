@@ -7,6 +7,20 @@ type MessageListProps = {
   onRetryMessage: (message: UIMessage) => void;
 };
 
+function AttachmentView({ attachment }: { attachment: { url: string; mimeType: string; fileName: string } }) {
+  if (attachment.mimeType.startsWith("image/")) {
+    return <img src={attachment.url} alt={attachment.fileName} className="rounded-lg max-w-full mb-2" />;
+  }
+  if (attachment.mimeType.startsWith("audio/")) {
+    return <audio src={attachment.url} controls className="mb-2" />;
+  }
+  return (
+    <a href={attachment.url} target="_blank" rel="noreferrer" className="block underline mb-2">
+      📄 {attachment.fileName}
+    </a>
+  );
+}
+
 export default function MessageList({ messages, currentUser, onRetryMessage }: MessageListProps) {
 
   const bottomRef = useRef<HTMLDivElement | null>(null);
@@ -36,6 +50,9 @@ export default function MessageList({ messages, currentUser, onRetryMessage }: M
                   : "bg-white"
               }`}
             >
+              {message.attachments?.map((attachment, index) => (
+                <AttachmentView key={index} attachment={attachment} />
+              ))}
               <p>{message.content}</p>
 
               <p
