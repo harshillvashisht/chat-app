@@ -2067,3 +2067,47 @@ Traced how the complete feature works across the application instead of treating
 ### Overall Takeaway
 
 > A reliable real-time system is not just about keeping the socket connected. The database remains the source of truth, and reconnection requires a way for the client to determine what state it missed and synchronize that missing state.
+
+# 2026-08-21
+
+## Chat App v2 — File Uploads & Object Storage
+
+### Presigned URLs
+
+- Learned that a presigned URL is a cryptographically signed, time-limited permission slip for one specific operation — not a generic access token.
+- Understood that constructing a `PutObjectCommand` does nothing on the network by itself; it's purely a description of an intended operation (bucket, key, content-type).
+- Learned that `getSignedUrl()` takes that description and signs it locally using the backend's secret credentials, producing a URL the client can use without ever seeing the secret.
+- Understood why the backend must be the one to mint this URL: it's the only party holding the credential, and it's the only place that can validate the request (auth, file type, size) before granting temporary permission.
+
+### Presigned POST vs Presigned PUT
+
+- Learned that presigned POST can carry policy conditions (e.g. `content-length-range`) enforced by the storage service itself, while presigned PUT cannot — whoever holds a PUT URL can send any size to it.
+- Understood that this distinction only matters if enforcement needs to happen *at the signed-request level*; Supabase's bucket-level max-file-size setting moved that enforcement elsewhere, making PUT sufficient without reintroducing POST complexity.
+- Learned to recognize when an apparent architectural inconsistency (switching POST → PUT) was actually already resolved by an earlier decision (switching storage providers), rather than an unnoticed mistake.
+
+### S3-Compatible Services & Path-Style Addressing
+
+- Learned that many services (Supabase, R2, MinIO) speak the S3 protocol without being AWS, and the same `@aws-sdk/client-s3` package works against any of them by changing only the endpoint/credentials.
+- Learned about `forcePathStyle: true` — non-AWS S3-compatible services require path-style bucket addressing (`endpoint/bucket/key`) rather than AWS's default virtual-hosted style (`bucket.endpoint/key`), and omitting this flag is a very common, non-obvious failure point.
+
+### Storage Identity vs Display Metadata
+
+- Learned why the object's storage key (`objectKey`) and its human-facing filename (`fileName`) must be kept as separate fields — using user-controlled filenames as storage paths risks collisions, unsafe characters, and no real identity guarantee.
+- Learned to derive a computed value (a public URL) from stored identity at read-time rather than storing the derived value itself — avoids a second source of truth that can silently go stale if the base URL or bucket ever changes.
+- Applied the same derive-don't-store principle a second time, independently, for the sidebar's last-message preview text — recognized the pattern repeating rather than treating each case as new.
+
+### Debugging Config Mismatches
+
+- Diagnosed a `NoSuchBucket` error on reads despite successful writes — learned that this meant the read-path URL config (bucket name baked into the derived public URL) disagreed with the write-path config, even though both individually looked correct in isolation.
+- Reinforced that two config values pointing at the same resource can silently diverge without either one looking obviously wrong on its own.
+
+### React State Lifecycle for Async UI
+
+- Learned to order async work deliberately: upload attachments fully *before* creating the optimistic UI message, so a "sending..." bubble never represents a file that turned out to fail uploading.
+- Learned why `Promise.all` for independent uploads (not a sequential loop) is the correct choice — parallel uploads have no dependency on each other.
+- Learned that error state shown in a UI needs an explicit clearing trigger (new attempt, new selection) — without one, a stale error can persist indefinitely after the underlying problem is already resolved.
+- Learned a real browser quirk: a file `<input>` won't fire `onChange` again for an identical re-selection unless its value is manually reset — and separately, why using this quirk as an implicit "duplicate prevention" mechanism is the wrong tool, since it fails silently and doesn't actually reason about file content.
+
+### Overall Takeaway
+
+> Presigned URLs work by shifting *where* a decision gets made without changing *who* is trusted: the backend still holds every credential and makes every judgment call (is this allowed, how big, what type), it just hands the client a narrow, temporary, cryptographically-scoped permission instead of proxying the bytes itself. The recurring lesson across this feature — storage identity vs display name, computed URL vs stored URL, computed preview vs client-recomputed preview — was the same principle each time: derive from a single source of truth rather than storing or recomputing a value that could drift out of sync with it.

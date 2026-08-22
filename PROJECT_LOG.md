@@ -1369,3 +1369,38 @@ Picked up Chat App v2 after a break and continued the reliability/scalability ro
 - Delivery receipts
 - Read receipts
 - End-to-end encryption later in the larger roadmap
+
+# Day 5 — File Uploads (Images, Documents, Multi-Attachment)
+
+**Branch:** `feature/file-uploads`
+
+Picked up Chat App v2 to add file/image/document sharing, the next item after reconnection sync in the reliability/scalability roadmap.
+
+### Completed
+
+- Evaluated storage backends; started with Cloudflare R2, discovered it requires a card on file even for its free tier, switched to Supabase Storage instead.
+- Integrated Supabase Storage via its S3-compatible endpoint using the standard `@aws-sdk/client-s3` SDK (not Supabase's own client), for portable, transferable S3 knowledge.
+- Built a presigned-upload flow:
+  - `POST /attachments/presign` validates file type/size and mints a short-lived signed PUT URL via `getSignedUrl`.
+  - Client uploads directly to Supabase Storage — file bytes never pass through the backend.
+- Extended the `Attachment` Prisma model: `objectKey` (storage identity), `mimeType`, `fileName`, `fileSize`, `duration`; supports multiple attachments per message.
+- Extended `sendMessage` (service + controller) to accept an optional `attachments` array, create `Message` + `Attachment` rows in one transaction, and support text-only, attachment-only, and combined messages.
+- Derived public object URLs at read-time from `objectKey` (never stored), applied consistently across the send-response, the duplicate-clientMessageId path, and message history fetches.
+- Built multi-file selection UI in `MessageInput` (select, preview, remove) and wired `ChatArea`'s send flow to upload all files in parallel before constructing the optimistic message.
+- Used `URL.createObjectURL` for instant local previews in the optimistic UI, replaced automatically by the server-confirmed URL once the real message round-trips.
+- Fixed `Chat.lastMessage` sidebar preview to fall back to type-appropriate text (📷 Photo / 📄 filename / 📎 N files) for attachment-only messages — computed once on the backend, passed through the socket payload instead of being recomputed (incorrectly) on the client.
+- Tested end-to-end with two browser clients: image send, document send, attachment-only send, combined text+attachment send, multi-file send — all rendering and persisting correctly.
+
+### Milestone
+
+- ✅ Presigned upload flow (Supabase S3-compatible)
+- ✅ Multi-attachment schema
+- ✅ Attachment-only / combined message support
+- ✅ Optimistic UI with local preview → server URL handoff
+- ✅ Sidebar preview fallback for non-text messages
+
+### Next
+
+- Voice message recording (reuses this same upload pipeline, tagged `AUDIO`)
+- Delivery/read receipts
+- End-to-end encryption
