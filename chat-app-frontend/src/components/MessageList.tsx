@@ -5,6 +5,28 @@ type MessageListProps = {
   messages: UIMessage[];
   currentUser: { id: number; username: string } | null;
   onRetryMessage: (message: UIMessage) => void;
+  otherLastReadMessageId: number | null;
+};
+
+const formatMessageTime = (createdAt: string) => {
+    const date = new Date(createdAt);
+    const now = new Date();
+    const isToday = date.toDateString() === now.toDateString();
+
+    const time = date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+
+    if (isToday) {
+        return time;
+    }
+
+    const isThisYear = date.getFullYear() === now.getFullYear();
+    const datePart = date.toLocaleDateString([], {
+        month: "short",
+        day: "numeric",
+        year: isThisYear ? undefined : "numeric"
+    });
+
+    return `${datePart}, ${time}`;
 };
 
 function AttachmentView({ attachment }: { attachment: { url: string; mimeType: string; fileName: string } }) {
@@ -21,7 +43,7 @@ function AttachmentView({ attachment }: { attachment: { url: string; mimeType: s
   );
 }
 
-export default function MessageList({ messages, currentUser, onRetryMessage }: MessageListProps) {
+export default function MessageList({ messages, currentUser, onRetryMessage, otherLastReadMessageId }: MessageListProps) {
 
   const bottomRef = useRef<HTMLDivElement | null>(null);
 
@@ -30,6 +52,22 @@ export default function MessageList({ messages, currentUser, onRetryMessage }: M
         behavior: "smooth",
     });
 }, [messages]);
+
+  let lastSeenOwnMessageId: number | null = null;
+  if (otherLastReadMessageId != null) {
+      for (const m of messages) {
+          if (m.senderId === currentUser?.id && m.id != null && m.id <= otherLastReadMessageId) {
+              lastSeenOwnMessageId = m.id;
+          }
+      }
+  }
+
+  let lastOwnMessageId: number | null = null;
+  for (const m of messages) {                    // <-- ADD this loop
+    if (m.senderId === currentUser?.id && m.id != null) {
+        lastOwnMessageId = m.id;
+    }
+}
 
   return (
     <div className="flex-1 overflow-y-auto space-y-4 p-6">
@@ -62,15 +100,17 @@ export default function MessageList({ messages, currentUser, onRetryMessage }: M
                     : "text-gray-500"
                 }`}
               >
-                {message.createdAt}
+                {formatMessageTime(message.createdAt)}
               </p>
 
               {message.status === "sending" && (
                 <span>Sending...</span>
               )}
 
-              {message.status === "sent" && (
-                <span>Sent</span>
+              {message.status === "sent" && message.id === lastOwnMessageId && (
+                  message.id === lastSeenOwnMessageId
+                      ? <span>Seen</span>
+                      : <span>Sent</span>
               )}
 
               {message.status === "failed" && (

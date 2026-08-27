@@ -6,6 +6,11 @@ interface Chat {
   };
   lastMessage: string | null;
   lastMessageAt: string | null;
+  participant1Id: number;
+  participant2Id: number;
+  participant1LastReadMessageId: number | null;
+  participant2LastReadMessageId: number | null;
+  otherUserLastReadMessageId: number | null;
 }
 
 interface Message {

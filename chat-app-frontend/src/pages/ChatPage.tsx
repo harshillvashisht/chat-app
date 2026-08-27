@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import Sidebar from "../components/Sidebar";
 import ChatArea from "../components/ChatArea";
 import type { Chat, Message, FriendRequest, User } from "../types/chat";
-import { getChats }  from "../services/chatApi.ts";
+import { getChats, markChatRead }  from "../services/chatApi.ts";
 import { getMessages, sendMessage } from "../services/messageApi.ts";
 import { acceptRequest, declineRequest, getRequests } from "../services/friendRequestApi.ts";
 import { socket } from "../socket/socket.ts";
@@ -79,6 +79,22 @@ export default function ChatPage() {
         );
     };
 
+    useEffect(() => {
+        const handleChatRead = ({ chatId, userId, lastReadMessageId }:
+            { chatId: number; userId: number; lastReadMessageId: number }) => {
+            if (currentUser && userId === currentUser.id) return; // ignore our own read event
+
+            setChats(prev => prev.map(chat =>
+                chat.id === chatId
+                    ? { ...chat, otherUserLastReadMessageId: lastReadMessageId }
+                    : chat
+            ));
+        };
+
+        socket.on("chat_read", handleChatRead);
+        return () => { socket.off("chat_read", handleChatRead); };
+    }, [currentUser]);
+
     const handleNewMessage = (newMessage: UIMessage) => {
 
         if (selectedChat && newMessage.chatId === selectedChat.id) {
@@ -88,6 +104,7 @@ export default function ChatPage() {
                     status: "sent"
                 })
                 );
+                markAsRead(selectedChat.id);
         }
 
         setChats((prevChats) => {
@@ -224,10 +241,27 @@ export default function ChatPage() {
         fetchMessages();
     }, [selectedChat]);
 
+    useEffect(() => {
+        if (selectedChat) {
+            markAsRead(selectedChat.id);
+        }
+    }, [selectedChat]);
+
+    const markAsRead = async (chatId: number) => {
+    try {
+        await markChatRead(chatId);
+    } catch (error) {
+        console.error("Error marking chat as read:", error);
+    }
+};
+
+
+    const liveSelectedChat = chats.find(c => c.id === selectedChat?.id);
+
   return (
     <div className="h-screen bg-slate-100 flex">
       <Sidebar chats={chats} selectedChat={selectedChat} onSelectChat={setSelectedChat} pendingRequests={pendingRequests} onAcceptRequest={onAcceptRequest} onDeclineRequest={onDeclineRequest} />
-      <ChatArea messages={messages} selectedChat={selectedChat} currentUser={currentUser}  onOptimisticMessage={handleOptimisticMessage} onMessageFailed={handleMessageFailed} onRetryMessage={handleRetryMessage} />
+      <ChatArea messages={messages} selectedChat={selectedChat} currentUser={currentUser}  otherLastReadMessageId={liveSelectedChat?.otherUserLastReadMessageId ?? null} onOptimisticMessage={handleOptimisticMessage} onMessageFailed={handleMessageFailed} onRetryMessage={handleRetryMessage} />
     </div>
   );
 }

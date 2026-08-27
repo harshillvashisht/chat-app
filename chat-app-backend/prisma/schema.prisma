@@ -67,6 +67,8 @@ model Chat {
   lastMessage String?
   lastMessageAt DateTime?
   createdAt DateTime @default(now())
+  participant1LastReadMessageId Int?
+  participant2LastReadMessageId Int?
   @@unique([participant1Id, participant2Id])
   @@index([lastMessageAt])
   messages Message[]

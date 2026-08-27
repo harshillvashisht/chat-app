@@ -13,9 +13,10 @@ type ChatAreaProps = {
   onOptimisticMessage: (message: UIMessage) => void;
   onMessageFailed: (clientMessageId: string) => void;
   onRetryMessage: (message: UIMessage) => void;
+  otherLastReadMessageId: number | null;
 };
 
-export default function ChatArea({ messages, selectedChat, currentUser, onOptimisticMessage , onMessageFailed, onRetryMessage }: ChatAreaProps) {
+export default function ChatArea({ messages, selectedChat, currentUser, onOptimisticMessage , onMessageFailed, onRetryMessage, otherLastReadMessageId }: ChatAreaProps) {
 
   const [text, setText] = useState("");
   const [SelectedFiles, setSelectedFiles] = useState<File[]>([]);
@@ -87,7 +88,7 @@ export default function ChatArea({ messages, selectedChat, currentUser, onOptimi
     <main className="flex-1 flex flex-col bg-gray-50">
       <ChatHeader selectedChat={selectedChat} />
 
-      <MessageList messages={messages} currentUser={currentUser} onRetryMessage={onRetryMessage} />
+      <MessageList messages={messages} currentUser={currentUser} otherLastReadMessageId={otherLastReadMessageId} onRetryMessage={onRetryMessage} />
       {uploadError && <p className="text-red-500 text-sm">{uploadError}</p>}
       <MessageInput text={text} onChangeText={setText} selectedFiles={SelectedFiles} onFileSelected={handleFileSelected}  onRemoveFile={handleRemoveFile} onSend={handleSendMessage} />
     </main>

@@ -1404,3 +1404,35 @@ Picked up Chat App v2 to add file/image/document sharing, the next item after re
 - Voice message recording (reuses this same upload pipeline, tagged `AUDIO`)
 - Delivery/read receipts
 - End-to-end encryption
+
+# Day 6 — Read Receipts
+
+**Branch:** `feature/reconnect-sync`
+
+Closed out the reconnect-sync branch's remaining scope by replacing the originally-planned "delivery receipts" with read receipts, per revised roadmap ordering (finish all small features before starting E2E encryption).
+
+### Completed
+
+- Added `participant1LastReadMessageId` / `participant2LastReadMessageId` (nullable Int) directly on `Chat` — no participant join table exists, so tracking lives on the chat row itself.
+- Built `POST /chat/:chatId/read`: server computes the latest `Message.id` in the chat and writes it to the caller's field — never trusts a client-supplied value.
+- Broadcasts a `chat_read` event via the existing `chat_{chatId}` socket room (same fanout pattern as `sendMessage`), so the other participant is notified live without a new subscription mechanism.
+- Updated `getChats` to return a flattened `otherUserLastReadMessageId` per chat, matching the existing `otherUser` flattening pattern, so the frontend never needs to reason about `participant1Id`/`participant2Id`.
+- Wired two frontend trigger points for marking a chat read: on chat selection, and on any new incoming message while that chat is open.
+- Added a `chat_read` socket listener updating local `chats` state, and derived a single "live" selected-chat value from `chats` at render time to keep the read state and message list in sync.
+- Implemented "Seen"/"Sent" rendering: a single status label shown only under the newest own message in the conversation (blank for all messages before it) — matched to Instagram/iMessage's convention rather than WhatsApp's per-message tick style.
+- Reformatted message timestamps: time-only for today's messages, date+time for older ones, date+time+year once the message crosses into a previous year.
+- Resolved a branch-divergence issue: file-upload work had landed on a separate branch, not on `reconnect-sync` — merged file-uploads into `main` first, then merged `main` into `reconnect-sync` before starting read-receipt work, avoiding a later merge conflict.
+- Tested end-to-end across two clients: live read-status updates without refresh, correct "Seen" movement across multiple messages, correct state after a full page reload, and correct "no read event" behavior when the other client has the chat closed.
+
+### Milestone
+
+- ✅ Server-authoritative read-state computation
+- ✅ Live read-receipt broadcast via existing socket room
+- ✅ Single-marker "Seen"/"Sent" UI matching Instagram/iMessage convention
+- ✅ Context-aware timestamp formatting
+- ✅ Branch merged into `main`, `feature/reconnect-sync` deleted
+
+### Next
+
+- End-to-end encryption
+- Redis / multi-instance scaling (separate non-`main`-merging branch, per earlier decision)

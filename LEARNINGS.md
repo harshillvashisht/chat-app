@@ -2111,3 +2111,41 @@ Traced how the complete feature works across the application instead of treating
 ### Overall Takeaway
 
 > Presigned URLs work by shifting *where* a decision gets made without changing *who* is trusted: the backend still holds every credential and makes every judgment call (is this allowed, how big, what type), it just hands the client a narrow, temporary, cryptographically-scoped permission instead of proxying the bytes itself. The recurring lesson across this feature — storage identity vs display name, computed URL vs stored URL, computed preview vs client-recomputed preview — was the same principle each time: derive from a single source of truth rather than storing or recomputing a value that could drift out of sync with it.
+
+# 2026-08-27
+
+## Chat App v2 — Read Receipts
+
+### Server-Authoritative State
+
+- Learned why "read up to message X" must be computed server-side from the DB (latest `Message.id` in the chat) rather than accepted as a client-supplied value in the request body — a client-trusted value opens the door to marking undelivered messages as read, or a stale client overwriting a more recent read state with an older one.
+- Reinforced a pattern already seen elsewhere in this project (clientMessageId idempotency, presigned URL minting): the backend holds the source of truth and computes the canonical result; the client only signals *intent* ("I opened this chat"), never supplies the *result*.
+
+### Reusing an Existing Broadcast Pattern
+
+- Recognized that the read-receipt broadcast didn't need new infrastructure — it reused the exact same `io.to(chat_{chatId}).emit(...)` room-fanout pattern already built for `sendMessage`, since both participants are already members of that room.
+- Learned to explicitly verify the room-name string matches across every emit site (`chat_${chatId}` vs `${chatId}`) rather than assuming consistency — a silent mismatch here would cause events to appear to work (no error) while never reaching the other client.
+
+### Single-Marker vs Per-Message Read State
+
+- Discovered two competing real-world conventions for rendering read state: a single "Seen" label under only the most recent read message (iMessage, Instagram DMs, Messenger) vs. a per-message status icon that updates individually on every message (WhatsApp, Telegram ticks).
+- Learned that both conventions can be built on the exact same backend data model (`lastReadMessageId`) — the choice is a pure frontend rendering decision, not a schema or protocol difference.
+- Iterated the frontend implementation twice: first version showed "Sent" under every past own message and "Seen" only on the latest — closer to WhatsApp's per-message idea but inconsistent with the chosen "Instagram-style" convention. Corrected by gating the status label entirely on being the newest own message in the conversation (blank for every message before it, one label only on the last).
+
+### Frontend State Derivation Under Multiple Sources of Truth
+
+- Hit a bug caused by two independent pieces of state (`selectedChat` and the `chats` array) both notionally representing "the current chat," but only one of them (`chats`) being updated by the read-receipt socket handler. Fixed by deriving a single "live" view of the selected chat from `chats` at render time, rather than trying to keep `selectedChat` itself in sync.
+- Learned to trace a data field back to its actual origin before wiring a UI to it: an earlier plan assumed `participant1Id`/`participant2Id` would be available on the frontend's `Chat` object, but the real `getChats` response was already flattened to `otherUser` and never exposed those fields — required moving the "who is the other participant" resolution into the backend response itself instead of the frontend.
+
+### Timestamp Display
+
+- Learned to treat a raw ISO timestamp as a UX problem, not just a formatting one: showing full absolute timestamps is fine when the time is not self-evidently "today," but redundant and noisy for today's own messages — matched the convention where today's messages show time-only, older ones show date+time, and cross-year messages additionally show the year.
+
+### Git Branch Hygiene
+
+- Applied a merge-order lesson from the file-uploads branch situation to this feature's own branch lifecycle: bring divergent branches back in line (`main` → target branch) *before* starting new work on top, rather than discovering the gap mid-feature.
+- Reinforced the practice of deleting a branch immediately once fully merged, both locally and on the remote, to keep the branch list meaningful.
+
+### Overall Takeaway
+
+> The read-receipt feature didn't introduce any genuinely new backend concept — it's the same "server computes canonical state, client only signals intent, broadcast via existing socket room" pattern already established by file uploads and message sending. The actual complexity was almost entirely on the frontend: figuring out which state derives from which source of truth, and matching a subtle, easy-to-get-wrong UX convention (single marker vs per-message) that looks simple once correct but is invisible until you compare it side-by-side with a reference app.
