@@ -68,3 +68,23 @@ export const getuser = async (req: Request, res: Response, next: NextFunction) =
         next(err);
     }
 }
+
+export const insertPublicKey = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const userId = req.user.id;
+        const { publicKey } = req.body;
+
+        if (!publicKey) {
+            throw new ApiError(400, "Public key is required");
+        }
+
+        await authService.insertPublicKey(userId, publicKey);
+
+        res.status(200).json({
+            success: true,
+            message: "Public key inserted successfully",
+        });
+    } catch (error: any) {
+        next(error);
+    }
+}

@@ -19,3 +19,8 @@ export async function getCurrentUser() {
     const response = await api.get("/auth/me");
     return response.data;
 }
+
+export async function updatePublicKey(publicKey: string) {
+    await api.patch("/auth/me/publickey", { publicKey });
+    
+}

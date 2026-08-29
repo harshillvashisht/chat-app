@@ -70,4 +70,18 @@ const getuser = async (userid: number) => {
     return userinfo;
 }
 
-export default { createUser , validateUser, getuser };
+const insertPublicKey = async (userid: number, publicKey: string) => {
+    await prisma.user.update({
+        where: {
+            id: userid
+        },
+        data: {
+            PublicKey: publicKey
+        }
+    });
+
+
+}
+
+
+export default { createUser , validateUser, getuser, insertPublicKey };

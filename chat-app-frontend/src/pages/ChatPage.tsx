@@ -8,6 +8,7 @@ import { acceptRequest, declineRequest, getRequests } from "../services/friendRe
 import { socket } from "../socket/socket.ts";
 import { getCurrentUser } from "../services/authApi.ts";
 import type { UIMessage } from "../types/chat";
+import { ensureKeyPairExists } from "../lib/crypto/keys.ts";
 
 export default function ChatPage() {
     const [selectedChat, setSelectedChat] = useState<Chat | null>(null);
@@ -21,6 +22,12 @@ export default function ChatPage() {
     const [currentUser, setCurrentUser] = useState<User | null>(null);
 
     const messagesRef = useRef<UIMessage[]>([]);
+
+    useEffect(() => {
+        if(currentUser?.id) {
+            ensureKeyPairExists(currentUser.id);
+        }
+    }, [currentUser?.id]);
 
     useEffect(() => {
         messagesRef.current = messages;

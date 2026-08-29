@@ -30,6 +30,7 @@ model User {
   receivedFriendRequests FriendRequest[] @relation("ReceivedFriendRequests")
   Chatasparticipant1 Chat[] @relation("Participant1")
   Chatasparticipant2 Chat[] @relation("Participant2")
+  PublicKey String?  
 }
 
 model Message {
@@ -39,7 +40,8 @@ model Message {
   senderId  Int
   clientMessageId String  @unique
   sender User   @relation("SentMessages", fields: [senderId], references: [id])
-  content String?
+  content String?  // JSON: {ciphertext, nonce, tag} when encrypted
+  encryptedVersion Int?   // null = legacy plaintext, 1 = static X25519+AES-GCM
   createdAt DateTime @default(now())
   @@index([chatId, createdAt])
   attachments Attachment[]
