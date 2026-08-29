@@ -2149,3 +2149,157 @@ Traced how the complete feature works across the application instead of treating
 ### Overall Takeaway
 
 > The read-receipt feature didn't introduce any genuinely new backend concept — it's the same "server computes canonical state, client only signals intent, broadcast via existing socket room" pattern already established by file uploads and message sending. The actual complexity was almost entirely on the frontend: figuring out which state derives from which source of truth, and matching a subtle, easy-to-get-wrong UX convention (single marker vs per-message) that looks simple once correct but is invisible until you compare it side-by-side with a reference app.
+
+# 2026-08-29
+
+## Chat App v2 — E2EE: Client Key Generation & Storage
+
+Today was less about volume of code and more about actually understanding a new domain end-to-end — public-key cryptography concepts I'd only seen in reels before, then immediately hitting two real concurrency bugs that turned "concept learned" into "concept actually internalized."
+
+---
+
+### The Core Idea: How Two People Get the Same Secret Without Sending It
+
+The thing that had to click before anything else made sense — Diffie-Hellman key exchange:
+
+    Alice                                    Bob
+    ─────                                    ───
+    private_A, public_A                      private_B, public_B
+    (generated locally, never shared)        (generated locally, never shared)
+
+            public_A ───────────────────────►
+            ◄─────────────────────── public_B
+
+    Alice computes:                          Bob computes:
+      shared = DH(private_A, public_B)         shared = DH(private_B, public_A)
+
+      shared_A  ==  shared_B   (mathematically guaranteed, same value)
+
+Only the *public* keys ever cross the network. Neither private key is ever transmitted, yet both sides land on the identical shared secret. This is the actual "magic" — everything else (AES-GCM, HKDF) is just plumbing around this one fact.
+
+Learned specifically **why you don't stop here** and encrypt messages directly with this shared value: you run it through HKDF (a key-derivation function) to turn a raw DH output into a properly-shaped symmetric key, then use that key with AES-GCM — a fast, authenticated symmetric cipher — for the actual message content. Asymmetric crypto (X25519) sets up the secret; symmetric crypto (AES-GCM) does the heavy lifting on real data.
+
+Also clicked: since both sides derive the *same* key, you only ever need **one** ciphertext per message — not one per recipient. This is different from PGP-style schemes where a sender encrypts a separate copy for every recipient's individual public key. Simpler mental model, simpler schema, direct consequence of DH being symmetric.
+
+---
+
+### Full Picture: Where Each Piece of Key Material Lives
+
+This was the diagram that made the "what goes where" question stop being confusing:
+
+    ┌─────────────────────────────┐         ┌─────────────────────────────┐
+    │         Browser A            │         │           Server            │
+    │                               │         │                              │
+    │  IndexedDB (scoped by userId) │         │  Postgres                    │
+    │  ├── X25519 private key 🔒    │         │  User                        │
+    │  └── X25519 public key        │  PATCH  │  ├── id                      │
+    │                               │ ──────► │  └── publicKey  ◄── (only    │
+    │  (AES-GCM key: NEVER stored,  │         │                    this ever │
+    │   derived fresh each time     │         │                    leaves    │
+    │   it's needed via DH + HKDF)  │         │                    the       │
+    │                               │         │                    browser)  │
+    └─────────────────────────────┘         └─────────────────────────────┘
+
+    Server's database contains, and will only ever contain:
+      [x] public keys
+      [x] ciphertext blobs (Message.content, Chat.lastMessage — as JSON {ciphertext, nonce, tag})
+
+    Server's database will NEVER contain:
+      [ ] private keys
+      [ ] derived AES-GCM keys
+      [ ] plaintext message content
+
+Learned this is *why* E2EE is a real property and not just marketing — it's not policy ("we promise not to read your messages"), it's structural: the server literally never receives the information needed to decrypt anything.
+
+---
+
+### Extractability: A Free Hardening Step
+
+Learned that `crypto.subtle.generateKey({ name: "X25519" }, extractable, ["deriveKey", "deriveBits"])` has a boolean flag that controls whether `exportKey()` can ever pull the raw key material out of the `CryptoKey` object later.
+
+Initially set this to `true` out of habit (copied the shape from an unrelated ECDH example). Corrected to `false` once I understood: since the private key is only ever *used* (for `deriveBits`) and never *exported*, there's no reason to allow export at all. Setting it non-extractable means even a compromised/XSS'd page can call crypto operations *with* the key but can never exfiltrate the raw bytes over the network.
+
+The part that surprised me: per the WebCrypto spec, **the public key stays exportable regardless of this flag** — it's only the private key's extractability that follows the parameter you pass. So this hardening is genuinely free: I still export the public key raw (to base64, to send to the server) exactly as before, while the private key gets strictly safer, for zero functional cost.
+
+---
+
+### Bug #1 — Scoping Identity to the Wrong Thing
+
+**What happened:** first implementation stored the generated keypair in IndexedDB under a hardcoded literal record key: `db.put('keys', keys, 'keys')`. Worked fine for one account. Logged into a second account on the same browser to test — and it silently reused the first account's keypair. No error, no crash, just wrong.
+
+    Browser IndexedDB, BEFORE fix:
+    ┌───────────────────────────┐
+    │  store: "keys"             │
+    │  record key: "keys"  ◄──── single slot, shared by every account
+    │  value: { userA's keypair }│
+    └───────────────────────────┘
+
+    User A logs in → checks slot "keys" → empty → generates → stores
+    User B logs in → checks slot "keys" → NOT empty (it's User A's!) → skips generation
+                                                                          [BUG] User B now
+                                                                             "has" User A's
+                                                                             private key
+
+**Root cause, in plain words:** I was scoping storage by *browser*, when what actually needed scoping was *identity*. A browser can hold multiple logged-in accounts across sessions; each one needs its own slot.
+
+**Fix:** use `userId` as the actual record key instead of a constant string:
+
+    Browser IndexedDB, AFTER fix:
+    ┌───────────────────────────┐
+    │  store: "keys"             │
+    │  record key: "user-A"  →  { userA's keypair }
+    │  record key: "user-B"  →  { userB's keypair }
+    └───────────────────────────┘
+
+**The generalizable lesson:** any time client-side state is meant to represent "this specific user's identity or data," ask explicitly what it's keyed by — the same discipline server-side session/auth code already has to follow, but easy to forget applies just as much to browser storage.
+
+---
+
+### Bug #2 — A Race Condition That React Deliberately Exposed
+
+**What happened:** even after fixing the scoping bug, testing the same account still occasionally produced a mismatch — the public key stored in IndexedDB didn't match the one stored in Postgres for the same user.
+
+**Why:** React 18's `<StrictMode>` intentionally double-invokes effects in development — mount, run effect, unmount, remount, run effect again — specifically to catch code that silently assumes "this only runs once." My `useEffect(() => { ensureKeyPairExists(userId) }, [])` got called twice, back to back, before either call finished writing to IndexedDB:
+
+    Time ──────────────────────────────────────────────────────►
+
+    Call 1: read IndexedDB (empty) ─── generate keypair_1 ─── write IndexedDB ─── PATCH keypair_1 to server
+    Call 2:   read IndexedDB (empty) ─── generate keypair_2 ─── write IndexedDB ─── PATCH keypair_2 to server
+                    ▲
+                    Both calls saw "empty" because neither had
+                    finished writing yet — the check-then-act
+                    sequence isn't atomic.
+
+    Final state depends purely on which write/PATCH lands LAST:
+      IndexedDB  → whichever db.put() finished last
+      Postgres   → whichever PATCH response resolved last
+      These two "lasts" aren't guaranteed to be the same call → mismatch.
+
+**The key realization:** this isn't a React quirk to silence — StrictMode's double-invoke exists *specifically* to surface exactly this class of bug in a safe dev environment, instead of it waiting to appear in production under real-world timing (two tabs open, slow network, multiple rapid calls). It's a bug I'd introduced the moment I wrote a "check, then generate, then write" function without protecting it against concurrent execution — StrictMode just gave me a deterministic, free way to catch it immediately.
+
+**Fix — the standard "dedupe concurrent async calls" pattern, applied per-identity:**
+
+    inFlightMap: Map<userId, Promise<Keys>>
+
+    ensureKeyPairExists(userId):
+        if inFlightMap has no entry for userId:
+            start the real work, store its PROMISE (not its result) in the map
+        return inFlightMap.get(userId)   <- second caller gets the SAME promise,
+                                             awaits the same execution instead of
+                                             starting a second one
+        (on completion, remove the entry so a later, genuinely separate
+         call can run fresh)
+
+This pattern is worth remembering beyond this feature — it's the fix shape for anything that must not run concurrently with itself: duplicate form submissions, double-fetch on remount, any "only once" assumption that React (or just real-world timing) doesn't actually guarantee.
+
+---
+
+### Smaller Fix Along the Way
+
+Caught during self-review before it caused a symptom: the public-key `PATCH` to the server was firing on *every* mount, not just after a fresh key was generated — wasteful, and sloppy enough that it could've masked the real bugs above if left in. Moved it inside the "key was just generated" branch so it only fires exactly once per identity, ever (barring storage loss).
+
+---
+
+### Overall Takeaway
+
+> The cryptography itself (X25519, AES-GCM, HKDF) turned out to be conceptually straightforward once the DH diagram clicked — Web Crypto does the actual math, I just need to call it correctly. The real engineering difficulty today was entirely about *scope and concurrency*: state that should have been scoped per-identity was scoped globally (per-browser, per-process), and neither bug produced an error — both failed silently, and both were only catchable by deliberately testing the exact scenario (two accounts, concurrent invocation) designed to expose them. That's a pattern I want to carry forward: for any "check if X exists, then create X" function, explicitly ask "what happens if this runs twice, concurrently, for two different identities" before considering it done.

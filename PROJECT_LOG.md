@@ -1436,3 +1436,69 @@ Closed out the reconnect-sync branch's remaining scope by replacing the original
 
 - End-to-end encryption
 - Redis / multi-instance scaling (separate non-`main`-merging branch, per earlier decision)
+
+# Day 7 — E2EE: Client Key Generation
+
+**Branch:** feature/e2ee-encryption
+
+Started E2EE implementation per the locked design: static X25519 key exchange per conversation → HKDF → AES-GCM, single-device scope, Double Ratchet deliberately deferred (confirmed it builds on the same primitives, so nothing here is wasted if pursued later). This session covered the schema layer and the full client-side key generation/storage layer — the identity foundation everything else in E2EE builds on top of.
+
+### Schema
+
+    model User {
+        id        String @id @default(uuid())
+        ...
+    +   publicKey String?      // X25519 public key, base64
+    }
+
+    model Message {
+        ...
+        content            String   // now holds JSON {ciphertext, nonce, tag} once encrypted
+    +   encryptionVersion  Int?     // null = legacy plaintext, 1 = static X25519+AES-GCM
+    }
+
+    model Chat {
+        ...
+        lastMessage String?         // now holds the same JSON {ciphertext, nonce, tag} shape
+    }
+
+- No separate `nonce` column — it lives embedded inside the `content`/`lastMessage` JSON payload alongside ciphertext and tag, since the two are always needed together.
+- `encryptionVersion` is the explicit disambiguator between old plaintext rows and new encrypted ones — deliberately not relying on "try JSON.parse and see if it throws," which would misfire on any old plaintext message that happens to look like valid JSON.
+
+### Backend
+
+- `PATCH /auth/me/publickey` — authenticated route, writes `publicKey` using the userId from the auth token, never a client-supplied id. Minimal handler: validate the string is present, `prisma.user.update`, return 200/204.
+
+### Frontend
+
+- New crypto utility module (key generation, storage, and base64 helpers) — pure logic, no React or HTTP dependency.
+- `ensureKeyPairExists(userId)`:
+  - Generates a non-extractable X25519 keypair via Web Crypto (`extractable: false`, usages `["deriveKey", "deriveBits"]`).
+  - Reads/writes IndexedDB (`crypto-keys-db` → `keys` store), keyed by `userId`, not a hardcoded constant.
+  - Exports the public key raw → base64, PATCHes it to the server, but only immediately after a fresh keypair is generated — not on every call.
+  - Wrapped in a per-user in-flight promise map to dedupe concurrent invocations (React StrictMode double-invoke, or any future overlapping call) into a single execution.
+- Wired into `ChatPage`'s mount `useEffect` — the app's sole authenticated route, so this single call site correctly covers new registrations, pre-E2EE existing accounts, and future storage-loss recovery without needing to special-case any of them.
+
+### Bugs Found & Fixed (via deliberate testing, not just review)
+
+1. **Cross-account key contamination** — IndexedDB record key was a hardcoded constant instead of `userId`; a second account on the same browser silently inherited the first account's keypair. Caught via a deliberate two-account test on the same browser.
+2. **StrictMode-triggered race** — concurrent invocations for the same user both saw "no key exists" before either finished writing, generating two different keypairs; IndexedDB and the Postgres-stored public key ended up from different pairs. Fixed via the per-user in-flight promise map above.
+3. **Unconditional PATCH on every mount** — caught during self-review; moved the server sync call inside the "freshly generated" branch only.
+
+### Verified End-to-End
+
+- IndexedDB and Postgres public keys match for a given account after a clean login.
+- Refreshing the page does not re-fire the PATCH request.
+- Two distinct accounts logging in on the same browser now produce two distinct, non-colliding keypairs.
+- Console-log instrumentation confirmed key generation fires exactly once per identity after the dedupe fix, rather than twice under StrictMode.
+
+### Milestone
+
+- ✅ E2EE schema in place (`User.publicKey`, `Message.encryptionVersion`)
+- ✅ Non-extractable, per-user-scoped X25519 keypair generation
+- ✅ Idempotent public-key sync to server, server-authoritative write
+- ✅ Two real concurrency/identity-scoping bugs found via deliberate multi-account/concurrent testing and fixed before building anything on top
+
+### Next
+
+- Key exchange on conversation open: fetch the other participant's `publicKey` from the server, import it as a `CryptoKey`, derive the shared secret via `deriveBits`, run it through HKDF to get the AES-GCM conversation key — verify independently on both participants' clients that the derived key is identical before wiring it into actual message send/receive.
