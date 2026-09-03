@@ -30,7 +30,7 @@ model User {
   receivedFriendRequests FriendRequest[] @relation("ReceivedFriendRequests")
   Chatasparticipant1 Chat[] @relation("Participant1")
   Chatasparticipant2 Chat[] @relation("Participant2")
-  PublicKey String?  
+  publicKey String?  
 }
 
 model Message {

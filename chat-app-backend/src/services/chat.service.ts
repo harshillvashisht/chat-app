@@ -85,5 +85,32 @@ const markChatAsRead = async (userId: number, chatId: number) => {
     return latestMessage.id;
 };
 
+const getChatPublicKey = async (userId: number, chatId: number) => {
+    const chat = await prisma.chat.findUnique({
+        where: { id: chatId },
+        include: {
+            participant1: {
+                select: {
+                    id: true,
+                    publicKey: true
+                }
+            },
+            participant2: {
+                select: {
+                    id: true,
+                    publicKey: true
+                }
+            }
+        }
+    });
 
-export default { getchats, markChatAsRead }
+    if (!chat) return { status: "not_found" };
+
+    if (chat.participant1Id !== userId && chat.participant2Id !== userId) return { status: "forbidden" };
+
+    const publicKey = chat.participant1Id === userId ? chat.participant2.publicKey : chat.participant1.publicKey;
+
+    return { status: "ok", publicKey }; 
+};
+
+export default { getchats, markChatAsRead, getChatPublicKey }

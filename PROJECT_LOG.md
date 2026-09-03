@@ -1502,3 +1502,59 @@ Started E2EE implementation per the locked design: static X25519 key exchange pe
 ### Next
 
 - Key exchange on conversation open: fetch the other participant's `publicKey` from the server, import it as a `CryptoKey`, derive the shared secret via `deriveBits`, run it through HKDF to get the AES-GCM conversation key — verify independently on both participants' clients that the derived key is identical before wiring it into actual message send/receive.
+
+# Day 8 — E2EE: Key Exchange & Derivation
+
+**Branch:** feature/e2ee-encryption
+
+Continued E2EE per the locked design, moving from client key generation/storage (Day 7) to actual key exchange: fetching the other participant's public key and deriving a shared AES-GCM key via X25519 → HKDF, verified identical on both sides before touching message encrypt/decrypt.
+
+### Backend
+
+    GET /chats/:chatId/public-key
+
+- Auth check: confirms caller is one of the chat's two participants before returning anything — initial draft skipped this and silently returned the "other" key to any authenticated caller for any chatId, not just their own chats. Fixed before shipping.
+- Single Prisma query via relation `include` (`participant1`, `participant2`), avoiding a second round-trip — reuses the same lookup needed for the auth check.
+- Discriminated response handling: `chat not found` → 404, `caller not a participant` → 403, `chat found but other user has no key yet` → 200 with `{ publicKey: null }` (a normal, temporary state — not an error).
+
+### Frontend
+
+- New `useEffect` in `ChatPage`, keyed on `selectedChat?.id` (separate from the mount-time keypair-generation effect — different lifecycle, different trigger).
+- Flow: fetch other participant's public key → `importKey` (X25519, raw) → `deriveBits` (256-bit shared secret) → `importKey` (HKDF, non-extractable) → `deriveKey` (HKDF, SHA-256, empty salt → AES-GCM key).
+- Derived keys cached in a `Map<chatId, CryptoKey>` held in a `ref` (not state — avoids re-render on cache writes), guarded against re-deriving on chat revisit.
+- Race-guarded with a `cancelled` flag in the effect cleanup, in case of fast chat-switching mid-derivation.
+
+### Bugs Found & Fixed
+
+1. **Missing participant authorization** — endpoint computed "the other participant's key" via a ternary without first checking the caller was actually a participant in that chat at all. Any authenticated user could query any chatId's public key. Added an explicit check before the lookup, returning 403 for non-participants.
+2. **Collapsed null cases** — "chat doesn't exist" and "chat exists but other user has no key yet" were both being returned as 404. Split into distinct responses (404 vs 200 with `publicKey: null`) so the frontend can tell a real error apart from a normal wait-state.
+3. **Prisma field casing mismatch** — schema had `PublicKey` (capital P), service code queried `publicKey` (lowercase). Unhandled 500 with no server-side logging to point at the cause. Renamed the schema field to lowercase for consistency with the rest of the schema, migrated.
+4. **Axios `.data` not unwrapped** — `getChatPublicKey` returned the raw Axios response object instead of its `.data` payload; the destructured `publicKey` was silently `undefined` at the call site despite the network tab showing a correct response. Fixed by returning `response.data` explicitly.
+5. **HKDF `extractable` misconfiguration** — WebCrypto requires the HKDF import key to be non-extractable with no exceptions; threw `KDF keys must set extractable=false`. Root cause was flipping the wrong key's extractability while trying to make the final AES-GCM key exportable for verification. Fixed by keeping the HKDF import key `false` always, and setting only the derived AES-GCM key temporarily `true`.
+6. **Missing `hash` in HKDF params** — `HkdfParams` requires an explicit hash algorithm; WebCrypto doesn't default one. Added `hash: "SHA-256"`.
+7. **HKDF salt randomized independently per side** (caught before testing, not a runtime bug) — an earlier draft called `crypto.getRandomValues()` for the salt on each client separately, which would have produced two different derived keys from the same shared secret. Fixed to a fixed/empty salt before it was ever exercised.
+
+### Verified End-to-End
+
+- Backend endpoint returns 403 for non-participants, 404 for nonexistent chats, and `{ publicKey: null }` (200) when the other user hasn't generated a key yet.
+- `otherPublicKeyRaw` correctly populated on the frontend after the Axios fix.
+- Both participants' browsers, tested independently (two accounts, same chat), derived and logged **identical** SHA-256 hashes of their respective derived AES-GCM keys — confirming X25519 → HKDF agreement is correct before any message encryption is built on top of it.
+
+### Milestone
+
+- ✅ `GET /chats/:chatId/public-key` implemented, authorized, and discriminated-response correct
+- ✅ Frontend key-exchange effect implemented, keyed on `selectedChat?.id`, cached per-chat in a ref-backed `Map`
+- ✅ X25519 → HKDF → AES-GCM derivation verified identical on both sides via independent hash comparison
+- ✅ Seven issues (2 backend correctness, 2 silent/no-error bugs, 3 WebCrypto API misuses) found and fixed before building on top of this layer
+
+### Cleanup Still Pending
+
+- Flip the derived AES-GCM key's `extractable` back to `false` (was temporarily `true` for the verification test)
+- Remove temporary verification `console.log`/export/hash code from the effect
+
+### Next
+
+- Message encrypt/decrypt: swap plaintext `content` for AES-GCM ciphertext on send, decrypt on render; extend to `Chat.lastMessage` (same encrypted JSON shape)
+- Nonce handling: fresh random 96-bit nonce per message via `crypto.getRandomValues`, embedded in the content JSON alongside ciphertext/tag
+- Legacy-message compatibility: `encryptionVersion: null` messages render as plaintext without attempting decryption
+- Reactive staleness handling (deferred until basic encrypt/decrypt is solid): catch AES-GCM decrypt failure → clear cached key for that chat → re-derive → retry once → surface error if retry also fails

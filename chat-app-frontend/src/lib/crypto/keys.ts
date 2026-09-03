@@ -91,5 +91,35 @@ export const ensureKeyPairExistsInner = async (userId: number | null): Promise<C
 
     return keys;
 };
-    
+
+export const getStoredPrivateKey = async (userId: number | null): Promise<CryptoKey | null> => {
+  const db: IDBPDatabase<CryptoKeysDB> = await openDB<CryptoKeysDB>('crypto-keys-db', 1);
+
+  const keys: CryptoKeys | undefined = await db.get('keys', `user-${userId}`);
+
+  return keys?.privateKey || null;
+}
+
+export const deriveAesKeyViaHkdf = async (sharedSecret: ArrayBuffer): Promise<CryptoKey> => {
+  const info = new TextEncoder().encode("AES-GCM key");
+
+  const hkdfKey = await crypto.subtle.importKey(
+    "raw",
+    sharedSecret,
+    { name: "HKDF" },
+    false,
+    ["deriveKey"]
+  );
+
+  const aesKey = await crypto.subtle.deriveKey(
+    { name: "HKDF", salt: new Uint8Array(0),  info , hash: "SHA-256" },
+    hkdfKey,
+    { name: "AES-GCM", length: 256 },
+    true,
+    ["encrypt", "decrypt"]
+  );
+
+  return aesKey;
+};
+
 

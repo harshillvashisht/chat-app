@@ -2303,3 +2303,63 @@ Caught during self-review before it caused a symptom: the public-key `PATCH` to 
 ### Overall Takeaway
 
 > The cryptography itself (X25519, AES-GCM, HKDF) turned out to be conceptually straightforward once the DH diagram clicked — Web Crypto does the actual math, I just need to call it correctly. The real engineering difficulty today was entirely about *scope and concurrency*: state that should have been scoped per-identity was scoped globally (per-browser, per-process), and neither bug produced an error — both failed silently, and both were only catchable by deliberately testing the exact scenario (two accounts, concurrent invocation) designed to expose them. That's a pattern I want to carry forward: for any "check if X exists, then create X" function, explicitly ask "what happens if this runs twice, concurrently, for two different identities" before considering it done.
+
+# 2026-09-03
+
+## Chat App v2 — E2EE: Key Exchange & Derivation
+
+Today picked up right where key generation left off: two clients that each have their own keypair now need to agree on a *shared* one, without ever transmitting it. Less new conceptual ground than last session, but the WebCrypto API turned out to be far less forgiving than expected — four real bugs, each a different flavor, each silent or cryptically-worded until hit at runtime.
+
+---
+
+### Why Three Steps, Not One
+
+The part that needed unpacking before writing any code: going from "I have their public key" to "I have a usable AES key" isn't a single API call, it's three, and each one is solving a genuinely different problem:
+
+    1. deriveBits (X25519)       →  raw shared secret (math only — DH output,
+                                     NOT uniformly random, unsafe to use directly)
+    2. importKey (as HKDF input) →  pure WebCrypto plumbing — wraps raw bytes
+                                     as a CryptoKey because deriveKey requires one
+    3. deriveKey (HKDF)          →  the actual whitening step — turns the biased
+                                     DH output into a proper, uniform AES-GCM key
+
+Skipping step 3 and using the raw DH output directly as an AES key is a known real-world mistake — several protocols have been broken this way. Step 2 has zero cryptographic purpose; it exists purely because the WebCrypto spec requires KDF inputs to be `CryptoKey` objects. Understanding *why* each step exists made the later API errors much easier to diagnose instead of guessing.
+
+---
+
+### Endpoint: The Auth Check That Almost Didn't Happen
+
+First draft of `GET /chats/:chatId/public-key` computed "the other participant's key" with a ternary — `participant1Id === userId ? participant2.publicKey : participant1.publicKey` — without ever checking that `userId` was a participant *at all*. A stranger could pass any `chatId` and silently fall into the `else` branch, getting back someone's public key for a conversation they were never part of. Caught this before writing the route handler, not after — worth noting since it's the kind of bug that doesn't crash, doesn't error, just quietly leaks the wrong thing to the wrong person.
+
+Also collapsed two genuinely different `null` cases into one 404 response initially: "chat doesn't exist" and "chat exists, other user just hasn't generated a key yet" are not the same situation, and conflating them would have made the frontend treat a totally normal, temporary state as a hard error.
+
+---
+
+### Four Bugs, Four Different Layers
+
+**1. Prisma field casing.** Schema had `PublicKey` (capital P) — the one field in an otherwise consistently camelCase schema — while the service code queried `publicKey` (lowercase). Prisma treats field names as case-sensitive, so this wasn't "wrong data," it was "field doesn't exist," thrown as an unhandled 500 with zero server-side logging to explain why. Renamed the schema field instead of patching around it, since it was the actual inconsistency.
+
+**2. Axios response unwrapping.** `api.get(...)` resolves to the full Axios response object (`{ data, status, headers, ... }`), not the JSON body. The helper function's return type (`Promise<{ publicKey: string | null }>`) was accurate to intent but not to runtime reality — TypeScript happily compiled a destructure that pulled `undefined` at runtime. Same category of trap as a bug from last session: something that looks structurally correct and produces no error, just silently wrong data.
+
+**3. HKDF's `extractable` rule.** WebCrypto enforces that the *intermediate* key imported for HKDF must be non-extractable — no exceptions, spec-level rule, not a project decision. This threw `KDF keys must set extractable=false`, and the fix required distinguishing between two different keys in the same function: the HKDF import key (must stay `false`, always) versus the final derived AES-GCM key (temporarily `true`, only for this session's verification step, back to `false` before anything real depends on it).
+
+**4. Missing `hash` parameter.** `HkdfParams` requires an explicit hash algorithm (`SHA-256`) — WebCrypto doesn't default one for HKDF the way some other algorithms default parameters. Omitting it isn't a silent wrong answer, at least — it throws immediately, which made this the fastest of the four to fix.
+
+---
+
+### Verifying Agreement, Not Just Absence of Errors
+
+Getting past all four errors doesn't prove the keys actually match — a bug in the *content* of the derivation (wrong public key fetched, salt mismatch between the two sides) would also compile and run without throwing. So the actual test: temporarily flip the derived AES key's `extractable` to `true`, export it raw, hash it with SHA-256, and compare the hex output logged from two independent browser sessions (two different accounts, same chat).
+
+    Browser A: chat 10 key hash: 0589ed1f23776013eff4b56c952bdda0ac2ccf6c4a409484eebf7453cfe567d6
+    Browser B: chat 10 key hash: 0589ed1f23776013eff4b56c952bdda0ac2ccf6c4a409484eebf7453cfe567d6
+
+Identical. This is the one property that matters most in this whole feature — if it's wrong, nothing downstream can ever work, silently, forever. Confirming it *before* touching message encrypt/decrypt means any future decrypt failure can be isolated to the encryption logic itself, not re-litigated back to "wait, do the keys even match."
+
+One near-miss caught before it became a fifth bug: an earlier draft of the HKDF salt used `crypto.getRandomValues()` independently on each side — which would have produced two *different* derived keys from the identical shared secret, since HKDF's output depends on the salt. Fixed to an empty/fixed salt (correct per HKDF's spec — security comes from the input keying material, not the salt) before it ever got tested, so it never actually surfaced as a runtime mismatch.
+
+---
+
+### Overall Takeaway
+
+> Today made a distinction worth remembering: some bugs throw and some don't, and the ones that don't are the dangerous ones. The Prisma casing issue and the Axios `.data` issue both compiled cleanly and only revealed themselves as `undefined`/500 at runtime with no direct pointer to the cause — versus the two WebCrypto param errors, which at least threw immediately with a specific message. Cross-checking API call shapes against actual spec requirements (not just "does the logic look right") would have caught the WebCrypto ones earlier; the casing and unwrapping ones needed the kind of "did I verify this round-trips correctly" testing that doesn't come from reading code alone. Confirming key agreement via independent hash comparison — rather than assuming it's correct because nothing threw — is the same discipline as last session's "explicitly test the two-account/concurrent scenario instead of trusting the happy path."

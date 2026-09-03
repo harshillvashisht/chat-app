@@ -7,3 +7,8 @@ export async function getChats() {
 export async function markChatRead(chatId: number) {
     return api.post(`/chat/${chatId}/read`);
 }
+
+export async function getChatPublicKey(chatId: number): Promise<{ publicKey: string | null }> {
+    const response = await api.get(`/chat/${chatId}/public-key`);
+    return response.data;
+}

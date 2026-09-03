@@ -76,7 +76,7 @@ const insertPublicKey = async (userid: number, publicKey: string) => {
             id: userid
         },
         data: {
-            PublicKey: publicKey
+            publicKey: publicKey
         }
     });
 

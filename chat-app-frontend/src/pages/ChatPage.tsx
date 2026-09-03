@@ -2,13 +2,13 @@ import { useState, useEffect, useRef } from "react";
 import Sidebar from "../components/Sidebar";
 import ChatArea from "../components/ChatArea";
 import type { Chat, Message, FriendRequest, User } from "../types/chat";
-import { getChats, markChatRead }  from "../services/chatApi.ts";
+import { getChats, markChatRead, getChatPublicKey }  from "../services/chatApi.ts";
 import { getMessages, sendMessage } from "../services/messageApi.ts";
 import { acceptRequest, declineRequest, getRequests } from "../services/friendRequestApi.ts";
 import { socket } from "../socket/socket.ts";
 import { getCurrentUser } from "../services/authApi.ts";
 import type { UIMessage } from "../types/chat";
-import { ensureKeyPairExists } from "../lib/crypto/keys.ts";
+import { base64ToBuffer, ensureKeyPairExists, getStoredPrivateKey, deriveAesKeyViaHkdf } from "../lib/crypto/keys.ts";
 
 export default function ChatPage() {
     const [selectedChat, setSelectedChat] = useState<Chat | null>(null);
@@ -23,6 +23,8 @@ export default function ChatPage() {
 
     const messagesRef = useRef<UIMessage[]>([]);
 
+    const chatKeysRef = useRef<Map<number, CryptoKey>>(new Map());
+
     useEffect(() => {
         if(currentUser?.id) {
             ensureKeyPairExists(currentUser.id);
@@ -32,6 +34,52 @@ export default function ChatPage() {
     useEffect(() => {
         messagesRef.current = messages;
     }, [messages]);
+
+    useEffect(() => {
+        if(!selectedChat) return;
+        if(chatKeysRef.current.has(selectedChat.id)) return;
+
+        let cancelled = false;
+
+        const deriveSharedKey = async () => {
+            if(!currentUser) return;
+            const { publicKey: otherPublicKeyRaw } = await getChatPublicKey( selectedChat.id);
+
+            if(!otherPublicKeyRaw) {
+                return;
+            }
+
+            const myprivateKey = await getStoredPrivateKey(currentUser.id);
+
+            const otherPublicKey = await crypto.subtle.importKey(
+                "raw", base64ToBuffer(otherPublicKeyRaw), "X25519", false, []
+            );
+
+            if(!myprivateKey) {
+                console.error("Private key not found for current user.");
+                return;
+            }
+
+            const sharedSecret = await crypto.subtle.deriveBits(
+                { name: "X25519", public: otherPublicKey },
+                myprivateKey,
+                256
+            );
+
+            const aeskey = await deriveAesKeyViaHkdf(sharedSecret);
+
+            if(!cancelled) {
+                chatKeysRef.current.set(selectedChat.id, aeskey);
+            }
+            
+        };
+
+        deriveSharedKey();
+
+        return () => {
+            cancelled = true;
+        };
+    }, [selectedChat?.id, currentUser]);
 
     const upsertMessage = (
         prev: UIMessage[],
