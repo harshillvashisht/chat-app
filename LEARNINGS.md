@@ -2363,3 +2363,85 @@ One near-miss caught before it became a fifth bug: an earlier draft of the HKDF 
 ### Overall Takeaway
 
 > Today made a distinction worth remembering: some bugs throw and some don't, and the ones that don't are the dangerous ones. The Prisma casing issue and the Axios `.data` issue both compiled cleanly and only revealed themselves as `undefined`/500 at runtime with no direct pointer to the cause — versus the two WebCrypto param errors, which at least threw immediately with a specific message. Cross-checking API call shapes against actual spec requirements (not just "does the logic look right") would have caught the WebCrypto ones earlier; the casing and unwrapping ones needed the kind of "did I verify this round-trips correctly" testing that doesn't come from reading code alone. Confirming key agreement via independent hash comparison — rather than assuming it's correct because nothing threw — is the same discipline as last session's "explicitly test the two-account/concurrent scenario instead of trusting the happy path."
+
+# 2026-09-05
+
+## Chat App v2 - E2EE: Encryption & Decryption of text 
+
+## AES-GCM nonce size
+Web Crypto's `crypto.getRandomValues(new Uint8Array(N))` takes a byte count,
+not a bit count. Wrote `new Uint8Array(96)` intending a 96-*bit* IV (the
+standard AES-GCM nonce size) and actually got a 96-*byte* (768-bit) IV.
+Web Crypto doesn't hard-reject non-standard IV lengths for AES-GCM, so this
+would have run without erroring — just silently outside the well-analyzed
+parameter range the algorithm is designed around. Correct: `new
+Uint8Array(12)` (12 bytes = 96 bits).
+
+Takeaway: when a crypto API takes a byte array sized for a "bit length"
+value, always convert explicitly (bits / 8) rather than eyeballing it — the
+API won't catch the mistake for you.
+
+## Refs vs state vs module-level caches
+Spent a while confused about whether "ref" meant the React `ref` prop
+(DOM/imperative-handle attachment) or a ref *object* (`useRef`'s `.current`
+container). They're unrelated concepts that share a name. A ref object is
+just a mutable box — passable as a normal prop, readable/writable anywhere,
+and importantly *silent*: writing to `.current` doesn't trigger a re-render.
+
+This makes refs the right tool for a cache that many places need to read
+imperatively (encrypt-on-send, decrypt-on-render, decrypt-on-socket-event)
+but that nothing needs to *react* to changing. If something does need to
+react to the cache changing (e.g. disabling a send button until a key is
+ready), that needs real state layered on top, kept separate from the cache
+itself.
+
+## Why `encryptionVersion`/`encryptedVersion` exists at all
+Not part of the crypto operation — it's wire/storage metadata. Needed
+because:
+- Old messages in the DB predate encryption entirely and are plain strings —
+  without a marker, there's no way to tell "decrypt this" from "this is
+  already plaintext, don't touch it."
+- Future-proofing: if the encryption scheme ever changes, a version *number*
+  (not a boolean) lets old messages keep decrypting under their original
+  scheme forever while new messages use a new one — a boolean can't
+  distinguish two different encrypted formats from each other.
+
+## The specific bug class that ate the most time today: name/order agreement across a boundary
+Two separate bugs today were both instances of the same underlying mistake —
+frontend and backend (or caller and callee) silently disagreeing about the
+*shape* of data crossing a boundary, with nothing forcing them to agree:
+1. Field name mismatch (`encryptionVersion` vs `encryptedVersion`) across the
+   HTTP request/response boundary — no compiler check catches this because
+   JSON bodies aren't type-checked across a network call the way in-process
+   function calls are.
+2. Positional argument order mismatch between a function's definition and a
+   call site (`attachments`/`encryptedVersion` swapped) — TypeScript *should*
+   catch this if the types of the two swapped parameters actually differ
+   (array vs number), which is a reminder to check why it didn't surface as
+   a compile error immediately, rather than assume the type-check is
+   airtight just because the language is typed.
+
+General lesson: anywhere data crosses a boundary that isn't enforced by the
+compiler (HTTP JSON bodies, anything typed loosely as `any`/`Request` further
+upstream), treat field-name/order agreement as something to verify by
+tracing an actual value through both sides, not something types alone
+guarantee.
+
+## Effects re-running on data that "looks the same"
+`setChats(response.data)` creates a *new array reference* every time it
+runs, even if the actual chat list contents are identical to before. Any
+`useEffect` depending on `chats` re-fires on every such call — including
+calls from unrelated code paths (socket reconnect, accepting a friend
+request) that happen to also refresh the same state. This is why a
+same-looking cache guard can still race: the effect body can start running
+again before an in-flight async operation from the *previous* run has
+finished, if the guard is only checked synchronously at the top and not
+updated until the operation completes.
+
+## Debugging approach that worked today
+Traced one value (`encryptedVersion` / message content) through its entire
+lifecycle end to end — frontend send → HTTP body → controller → service →
+DB write → DB read → HTTP response → frontend decrypt — rather than
+assuming any one layer was correct because it "looked right" in isolation.
+Both real bugs today were only found this way; neither was visible from
+reading any single file on its own.

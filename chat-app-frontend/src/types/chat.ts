@@ -6,6 +6,7 @@ interface Chat {
   };
   lastMessage: string | null;
   lastMessageAt: string | null;
+  lastMessageEncryptedVersion: number | null;
   participant1Id: number;
   participant2Id: number;
   participant1LastReadMessageId: number | null;
@@ -20,6 +21,7 @@ interface Message {
   senderId: number;
   content: string;
   createdAt: string;
+  encryptedVersion: number | null;
 }
 
 export type MessageStatus = "sending" | "sent" | "failed";

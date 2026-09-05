@@ -115,7 +115,7 @@ export const deriveAesKeyViaHkdf = async (sharedSecret: ArrayBuffer): Promise<Cr
     { name: "HKDF", salt: new Uint8Array(0),  info , hash: "SHA-256" },
     hkdfKey,
     { name: "AES-GCM", length: 256 },
-    true,
+    false,
     ["encrypt", "decrypt"]
   );
 

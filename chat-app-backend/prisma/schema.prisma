@@ -68,6 +68,7 @@ model Chat {
   participant2 User   @relation("Participant2", fields: [participant2Id], references: [id])
   lastMessage String?
   lastMessageAt DateTime?
+  lastMessageEncryptedVersion Int?
   createdAt DateTime @default(now())
   participant1LastReadMessageId Int?
   participant2LastReadMessageId Int?

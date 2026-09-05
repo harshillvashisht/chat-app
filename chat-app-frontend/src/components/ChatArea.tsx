@@ -5,6 +5,7 @@ import type { Chat, UIMessage } from "../types/chat";
 import { useState } from "react";
 import { sendMessage } from "../services/messageApi";
 import { uploadAttachment } from "../services/attachmentApi";
+import { encryptMessage } from "../lib/crypto/message";
 
 type ChatAreaProps = {
   messages: UIMessage[];
@@ -14,9 +15,10 @@ type ChatAreaProps = {
   onMessageFailed: (clientMessageId: string) => void;
   onRetryMessage: (message: UIMessage) => void;
   otherLastReadMessageId: number | null;
+  keysRef: React.RefObject<Map<number, CryptoKey>>;
 };
 
-export default function ChatArea({ messages, selectedChat, currentUser, onOptimisticMessage , onMessageFailed, onRetryMessage, otherLastReadMessageId }: ChatAreaProps) {
+export default function ChatArea({ messages, selectedChat, currentUser, onOptimisticMessage , onMessageFailed, onRetryMessage, otherLastReadMessageId, keysRef }: ChatAreaProps) {
 
   const [text, setText] = useState("");
   const [SelectedFiles, setSelectedFiles] = useState<File[]>([]);
@@ -26,6 +28,13 @@ export default function ChatArea({ messages, selectedChat, currentUser, onOptimi
     const trimmedText = text.trim();
     
     if ((trimmedText === "" && SelectedFiles.length === 0) || !selectedChat || !currentUser) return;
+    
+    const key = keysRef.current?.get(selectedChat.id);
+
+    if (!key) {
+      console.log("Encryption key not found. Cannot send message.");
+      return;
+    }
 
     setUploadError(null); // Reset upload error before sending
     const clientMessageId = crypto.randomUUID();
@@ -44,6 +53,8 @@ export default function ChatArea({ messages, selectedChat, currentUser, onOptimi
         ...a,
         url: URL.createObjectURL(filesToUpload[i])
     }));
+
+    const encryptedmessage = trimmedText ? await encryptMessage(trimmedText, key) : null;
       
 
     const optimisticMessage: UIMessage = {
@@ -51,6 +62,7 @@ export default function ChatArea({ messages, selectedChat, currentUser, onOptimi
           chatId: selectedChat.id,
           senderId: currentUser.id,
           content: trimmedText,
+          encryptedVersion: encryptedmessage ? 1 : null,
           createdAt: new Date().toISOString(),
           status: "sending",
           attachments: previewAttachments,
@@ -64,7 +76,7 @@ export default function ChatArea({ messages, selectedChat, currentUser, onOptimi
      try {
         await sendMessage(
             selectedChat.id,
-            trimmedText,
+            encryptedmessage,
             clientMessageId,
             attachments
         );

@@ -1558,3 +1558,117 @@ Continued E2EE per the locked design, moving from client key generation/storage 
 - Nonce handling: fresh random 96-bit nonce per message via `crypto.getRandomValues`, embedded in the content JSON alongside ciphertext/tag
 - Legacy-message compatibility: `encryptionVersion: null` messages render as plaintext without attempting decryption
 - Reactive staleness handling (deferred until basic encrypt/decrypt is solid): catch AES-GCM decrypt failure → clear cached key for that chat → re-derive → retry once → surface error if retry also fails
+
+# Day 9 — E2EE: Encryption & Decryption of text messages 
+
+## Goal for the session
+Move from "E2EE primitives exist and are verified" to actual end-to-end encrypted
+send/receive wired into the real message flow, including sidebar previews.
+
+## What shipped
+
+### 1. Message flow wired to encryption
+- `encryptMessage(message, key)` in `lib/crypto/message.ts` — AES-GCM encrypt,
+  returns a JSON string `{nonce, ciphertext, tag}` (all base64).
+- `decryptMessage(encryptedMessage, key)` — reverses it, returns the original
+  plaintext string.
+- `decryptIfNeeded(message, key)` — the actual integration point. Branches on
+  `encryptedVersion`: `null`/legacy → return content as-is; `1` → JSON.parse
+  then `decryptMessage`; unknown key or parse/decrypt failure → safe fallback
+  string instead of throwing.
+- Fixed a real bug in the first draft of `encryptMessage`: IV was generated as
+  `new Uint8Array(96)` (96 *bytes*) instead of `new Uint8Array(12)` (96 *bits*,
+  the correct AES-GCM standard nonce size).
+
+### 2. Key management — moved from per-selected-chat to bulk, cached
+- Originally derived the shared AES key only for `selectedChat`, in a
+  `useEffect` keyed on `[selectedChat?.id, currentUser]`.
+- Replaced with `deriveAndCacheChatKey(chatId, userId)`, a standalone function
+  called in a loop over all `chats` whenever the chat list loads
+  (`useEffect` on `[chats, currentUser]`). Needed so sidebar previews for
+  *unopened* chats can also be decrypted, not just the open one.
+- Cache lives in a ref (`chatKeysRef = useRef<Map<number, CryptoKey>>`), not
+  React state — keys don't need to trigger re-renders, they're read
+  imperatively at send/decrypt time.
+- Found and fixed a race: the original guard (`if (chatKeysRef.current.has(id))
+  return`) was checked before any `await`, so if the effect re-fired while a
+  derivation for the same chat was still in flight (e.g. `fetchChats()` being
+  called from three different places — mount, socket reconnect, friend
+  request accept — each producing a new `chats` array reference), duplicate
+  `getChatPublicKey` calls fired for the same chat. Added a second ref
+  (`pendingDerivations = useRef<Set<number>>`) marked *synchronously* before
+  the first `await`, closing the window. Reduced request count but didn't
+  fully eliminate duplicates — parked as a known imperfection, not reopened
+  today (see Known gaps).
+
+### 3. Two real naming/wiring bugs found via full send→store→fetch→decrypt trace
+- **Field name mismatch, both directions**: frontend used
+  `encryptionVersion` everywhere (type, `sendMessage`'s POST body,
+  `decryptIfNeeded` calls); backend used `encryptedVersion` (Prisma field,
+  service function, route handler). Value was silently lost on send and
+  silently `undefined` on read. Standardized on `encryptedVersion` throughout
+  (backend name won since it touches the DB column).
+- **Swapped positional arguments**: controller called
+  `messageService.sendmessage(chatId, userId, content, clientId, attachments, encryptedVersion)`
+  but the service signature is
+  `(chatId, userId, content, clientId, encryptedVersion, attachments = [])`.
+  This silently stored `encryptedVersion: null` for every message (since an
+  array is never `=== 1`) and would throw when `attachments.map` was called
+  on what was actually the version number. Fixed by reordering the call site
+  to match the function signature.
+
+### 4. Sidebar preview (`Chat.lastMessage`) needed its own fix
+- Server builds `lastMessage` from `message.content` via `buildMessagePreview`
+  — which now receives ciphertext and passes it through untouched (it has no
+  way to know it's encrypted). Fix: store an encrypted-version marker
+  alongside the preview too.
+  - Added `lastMessageEncryptedVersion Int?` to the `Chat` Prisma model,
+    migrated.
+  - Service now writes `lastMessageEncryptedVersion: encryptedVersion` next
+    to `lastMessage` in the same `chat.update`.
+- Frontend: added a separate `previewOverrides` state
+  (`Record<chatId, decryptedPreviewText>`), computed in its own `useEffect`
+  on `[chats, currentUser]`, merged into the `chats` array only at the point
+  it's passed to `Sidebar` — deliberately *not* written back into `chats`
+  itself, to avoid a decrypt-loop (decrypting would change `chats`, which
+  would re-trigger the effect, which would try to re-decrypt already-plain
+  text).
+  - `handleNewMessage`'s live socket-driven sidebar update decrypts inline
+    and writes straight into `chats.lastMessage` (a deliberate shortcut, not
+    using `previewOverrides`) — had to also set
+    `lastMessageEncryptedVersion: null` there so the effect above doesn't try
+    to re-decrypt that already-plaintext value on the next `chats` change.
+
+### 5. Unrelated infra hiccup
+- Hit a `PrismaClientKnownRequestError P1001` (can't reach Neon DB host)
+  mid-session — root cause was Neon's free-tier compute auto-suspend / cold
+  start, not an app bug. Resolved itself on retry after the compute resumed.
+  Possibly related to the elevated `public-key` request count observed later
+  (socket reconnect churn during the outage window).
+
+## Testing performed
+Full manual pass, two real accounts:
+1. Send text-only message — instant optimistic render, live socket decrypt
+   on receiver, DB row confirmed as ciphertext JSON with `encryptedVersion: 1`.
+2. Reload both sides post-send — confirmed decrypt-from-server (not just
+   optimistic local state) works.
+3. Attachment-only message (no text) — confirmed `content: null`,
+   `encryptedVersion: null`, renders correctly after reload.
+4. Retry flow (killed network mid-send, reconnected, retried) — sent and
+   decrypted correctly.
+5. Sidebar preview — failed on first pass (showed raw ciphertext JSON),
+   fixed per section 4 above, passed on retest.
+
+## Known gaps / deliberately parked
+- Duplicate `getChatPublicKey` requests are reduced but not fully eliminated
+  after the in-flight-guard fix (78 requests observed for 3 chats against an
+  expected ~6 under StrictMode). Suspected residual cause: multiple
+  `fetchChats()` call sites still producing new array references close
+  together, especially under reconnect churn. Not reopened today — the app
+  is at "quality bar is functionally correct, this is a wasted-request
+  problem, not a correctness one." Candidate for a later pass if it gets
+  worse or before shipping.
+- No push-notification content preview story (server can't decrypt to build
+  one).
+- No key rotation / device-reset story (accepted tradeoff, not yet verified
+  to fail gracefully).

@@ -10,9 +10,10 @@ export const sendMessage = async (req: Request, res: Response, next: NextFunctio
         const content = req.body.content;
         const clientId = req.body.clientId;
         const attachments = req.body.attachments ?? []; 
+        const encryptedVersion = req.body.encryptedVersion ?? null;
         
 
-        const result = await messageService.sendmessage(chatId, userId, content, clientId, attachments);
+        const result = await messageService.sendmessage(chatId, userId, content, clientId, encryptedVersion, attachments );
 
         const io = getIO();
 

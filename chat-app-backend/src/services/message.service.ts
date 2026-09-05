@@ -4,10 +4,11 @@ import { ApiError } from "../utils/ApiError";
 import { Prisma } from "@prisma/client";
 import { buildMessagePreview , withAttachmentUrls } from "../utils/buildmessagepreview";
 
-const sendmessage = async (chatId: number , userId: number, content: string, clientId: string, attachments: AttachmentInput[] = []) => {
+const sendmessage = async (chatId: number , userId: number, content: string, clientId: string, encryptedVersion: number | null , attachments: AttachmentInput[] = []) => {
 
     if (isNaN(chatId)) {
         throw new ApiError(400, "Invalid chat id");
+
     }
 
     const chat = await prisma.chat.findUnique({
@@ -32,6 +33,8 @@ const sendmessage = async (chatId: number , userId: number, content: string, cli
         throw new ApiError(400, "Message must have content or at least one attachment")
     }
 
+    if(encryptedVersion !== 1) encryptedVersion = null; 
+
     try {
         return await prisma.$transaction(async (tx) => {
 
@@ -41,6 +44,7 @@ const sendmessage = async (chatId: number , userId: number, content: string, cli
                     senderId: userId,
                     chatId: chatId,
                     clientMessageId: clientId,
+                    encryptedVersion: encryptedVersion,
                     attachments: {
                         create: attachments.map(a => ({
                             objectKey: a.objectKey,
@@ -65,7 +69,8 @@ const sendmessage = async (chatId: number , userId: number, content: string, cli
                     },
                     data:{
                         lastMessage: previewMessage,
-                        lastMessageAt: message.createdAt
+                        lastMessageAt: message.createdAt,
+                        lastMessageEncryptedVersion: encryptedVersion
                     }
                 })
 

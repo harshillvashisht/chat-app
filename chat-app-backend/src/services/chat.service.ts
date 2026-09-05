@@ -42,7 +42,8 @@ const getchats = async (userId: number) =>{
             },
             lastMessage: chat.lastMessage,
             lastMessageAt: chat.lastMessageAt,
-            otherUserLastReadMessageId: otherUserLastReadMessageId
+            otherUserLastReadMessageId: otherUserLastReadMessageId,
+            lastMessageEncryptedVersion: chat.lastMessageEncryptedVersion
         };
 
     })

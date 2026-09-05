@@ -9,6 +9,7 @@ import { socket } from "../socket/socket.ts";
 import { getCurrentUser } from "../services/authApi.ts";
 import type { UIMessage } from "../types/chat";
 import { base64ToBuffer, ensureKeyPairExists, getStoredPrivateKey, deriveAesKeyViaHkdf } from "../lib/crypto/keys.ts";
+import { decryptIfNeeded, encryptMessage } from "../lib/crypto/message.ts";
 
 export default function ChatPage() {
     const [selectedChat, setSelectedChat] = useState<Chat | null>(null);
@@ -25,6 +26,30 @@ export default function ChatPage() {
 
     const chatKeysRef = useRef<Map<number, CryptoKey>>(new Map());
 
+    const [previewOverrides, setPreviewOverrides] = useState<Record<number, string>>({});
+
+    const pendingDerivations = useRef<Set<number>>(new Set());
+
+    useEffect(() => {
+        if (!currentUser || chats.length === 0) return;
+        let cancelled = false;
+
+        (async () => {
+            const entries = await Promise.all(chats.map(async (chat) => {
+                await deriveAndCacheChatKey(chat.id, currentUser.id);
+                const key = chatKeysRef.current.get(chat.id);
+                const preview = await decryptIfNeeded(
+                    { content: chat.lastMessage ?? "", encryptedVersion: chat.lastMessageEncryptedVersion },
+                    key
+                );
+                return [chat.id, preview] as const;
+            }));
+            if (!cancelled) setPreviewOverrides(Object.fromEntries(entries));
+        })();
+
+        return () => { cancelled = true; };
+    }, [chats, currentUser]);
+
     useEffect(() => {
         if(currentUser?.id) {
             ensureKeyPairExists(currentUser.id);
@@ -35,30 +60,22 @@ export default function ChatPage() {
         messagesRef.current = messages;
     }, [messages]);
 
-    useEffect(() => {
-        if(!selectedChat) return;
-        if(chatKeysRef.current.has(selectedChat.id)) return;
+    const deriveAndCacheChatKey = async (chatId: number, userId: number): Promise<void> => {
+        if (chatKeysRef.current.has(chatId) || pendingDerivations.current.has(chatId)) return;
+        pendingDerivations.current.add(chatId);
+        try {
+            const { publicKey: otherPublicKeyRaw } = await getChatPublicKey(chatId);
+            if (!otherPublicKeyRaw) return;
 
-        let cancelled = false;
-
-        const deriveSharedKey = async () => {
-            if(!currentUser) return;
-            const { publicKey: otherPublicKeyRaw } = await getChatPublicKey( selectedChat.id);
-
-            if(!otherPublicKeyRaw) {
+            const myprivateKey = await getStoredPrivateKey(userId);
+            if (!myprivateKey) {
+                console.error("Private key not found for current user.");
                 return;
             }
-
-            const myprivateKey = await getStoredPrivateKey(currentUser.id);
 
             const otherPublicKey = await crypto.subtle.importKey(
                 "raw", base64ToBuffer(otherPublicKeyRaw), "X25519", false, []
             );
-
-            if(!myprivateKey) {
-                console.error("Private key not found for current user.");
-                return;
-            }
 
             const sharedSecret = await crypto.subtle.deriveBits(
                 { name: "X25519", public: otherPublicKey },
@@ -67,19 +84,21 @@ export default function ChatPage() {
             );
 
             const aeskey = await deriveAesKeyViaHkdf(sharedSecret);
+            chatKeysRef.current.set(chatId, aeskey);
+        } finally {
+            pendingDerivations.current.delete(chatId);
+        }
+    };
 
-            if(!cancelled) {
-                chatKeysRef.current.set(selectedChat.id, aeskey);
-            }
-            
-        };
+    useEffect(() => {
+        if (!currentUser || chats.length === 0) return;
 
-        deriveSharedKey();
-
-        return () => {
-            cancelled = true;
-        };
-    }, [selectedChat?.id, currentUser]);
+        chats.forEach(chat => {
+            deriveAndCacheChatKey(chat.id, currentUser.id).catch(err =>
+                console.error(`Failed to derive key for chat ${chat.id}:`, err)
+            );
+        });
+    }, [chats, currentUser]);
 
     const upsertMessage = (
         prev: UIMessage[],
@@ -150,16 +169,18 @@ export default function ChatPage() {
         return () => { socket.off("chat_read", handleChatRead); };
     }, [currentUser]);
 
-    const handleNewMessage = (newMessage: UIMessage) => {
+    const handleNewMessage = async (newMessage: UIMessage) => {
 
-        if (selectedChat && newMessage.chatId === selectedChat.id) {
-               setMessages(prev =>
-                upsertMessage(prev, {
-                    ...newMessage,
-                    status: "sent"
-                })
-                );
-                markAsRead(selectedChat.id);
+        if(currentUser) {
+            await deriveAndCacheChatKey(newMessage.chatId, currentUser.id);
+        }
+
+        const key = chatKeysRef.current.get(newMessage.chatId);
+        const decryptedContent = await decryptIfNeeded({ content: newMessage.content, encryptedVersion: newMessage.encryptedVersion }, key);
+
+         if (selectedChat && newMessage.chatId === selectedChat.id) {
+            setMessages(prev => upsertMessage(prev, { ...newMessage, content: decryptedContent, status: "sent" }));
+            markAsRead(selectedChat.id);
         }
 
         setChats((prevChats) => {
@@ -171,7 +192,7 @@ export default function ChatPage() {
             
             const updatedChats = [...prevChats];
             const [chat] = updatedChats.splice(chatIndex, 1);
-            const updatedChat = { ...chat, lastMessage: newMessage.lastMessagePreview, lastMessageAt: newMessage.createdAt };
+            const updatedChat = { ...chat, lastMessage: decryptedContent, lastMessageAt: newMessage.createdAt, lastMessageEncryptedVersion: null };
             return [updatedChat, ...updatedChats];
               
         })
@@ -200,6 +221,12 @@ export default function ChatPage() {
 }, [selectedChat]);
 
     const handleRetryMessage = async (message: UIMessage) => {
+        const key = chatKeysRef.current.get(message.chatId);
+
+        if (!key) {
+            console.error("Encryption key not found. Cannot retry message.");
+            return;
+        }
         setMessages(prev =>
             prev.map(m =>
                 m.clientMessageId === message.clientMessageId
@@ -209,10 +236,19 @@ export default function ChatPage() {
         );
 
         try {
+            const encryptedmessage = message.content ? await encryptMessage(message.content, key) : null;
+
+
             await sendMessage(
                 message.chatId,
-                message.content,
-                message.clientMessageId
+                encryptedmessage,
+                message.clientMessageId,
+                message.attachments ? message.attachments.map(a => ({
+                    objectKey: a.objectKey,
+                    mimeType: a.mimeType,
+                    fileName: a.fileName,
+                    fileSize: a.fileSize
+                })) : undefined
             );
         }
         catch (error) {
@@ -276,9 +312,17 @@ export default function ChatPage() {
     const fetchMessages = async (after?: number) => {
             if (selectedChat) {
                 try {
+                    if(currentUser) {
+                        await deriveAndCacheChatKey(selectedChat.id, currentUser.id);
+                    }
+                    const key = chatKeysRef.current.get(selectedChat.id);
                     const response = await getMessages(selectedChat.id, after );
+                    const incoming = await Promise.all(response.data.map(async (m: Message) => ({
+                        ...m,
+                        content: await decryptIfNeeded({ content: m.content, encryptedVersion: m.encryptedVersion }, key),
+                        status: "sent" as const
+                    })));
                     setMessages(prev => {
-                        const incoming = response.data.map((m: Message) => ({ ...m, status: "sent" as const }));
                         if (!after) return incoming; 
                         return incoming.reduce((acc: UIMessage[], msg: UIMessage) => upsertMessage(acc, msg), prev); 
                     });
@@ -315,8 +359,8 @@ export default function ChatPage() {
 
   return (
     <div className="h-screen bg-slate-100 flex">
-      <Sidebar chats={chats} selectedChat={selectedChat} onSelectChat={setSelectedChat} pendingRequests={pendingRequests} onAcceptRequest={onAcceptRequest} onDeclineRequest={onDeclineRequest} />
-      <ChatArea messages={messages} selectedChat={selectedChat} currentUser={currentUser}  otherLastReadMessageId={liveSelectedChat?.otherUserLastReadMessageId ?? null} onOptimisticMessage={handleOptimisticMessage} onMessageFailed={handleMessageFailed} onRetryMessage={handleRetryMessage} />
+      <Sidebar chats={chats.map(c => ({ ...c, lastMessage: previewOverrides[c.id] ?? c.lastMessage }))} selectedChat={selectedChat} onSelectChat={setSelectedChat} pendingRequests={pendingRequests} onAcceptRequest={onAcceptRequest} onDeclineRequest={onDeclineRequest} />
+      <ChatArea messages={messages} selectedChat={selectedChat} currentUser={currentUser}  otherLastReadMessageId={liveSelectedChat?.otherUserLastReadMessageId ?? null} onOptimisticMessage={handleOptimisticMessage} onMessageFailed={handleMessageFailed} onRetryMessage={handleRetryMessage} keysRef={chatKeysRef} />
     </div>
   );
 }
