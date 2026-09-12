@@ -97,7 +97,7 @@ export default function ChatArea({ messages, selectedChat, currentUser, onOptimi
   }
 
   return (
-    <main className="flex-1 flex flex-col bg-gray-50">
+    <main className="flex flex-1 flex-col bg-[#10141b]">
       <ChatHeader selectedChat={selectedChat} />
 
       <MessageList messages={messages} currentUser={currentUser} otherLastReadMessageId={otherLastReadMessageId} onRetryMessage={onRetryMessage} />

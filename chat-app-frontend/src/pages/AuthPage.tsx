@@ -10,19 +10,19 @@ export default function AuthPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-100 px-4">
-      <div className="w-full max-w-md rounded-xl bg-white p-8 shadow-lg">
-        <h1 className="mb-6 text-center text-3xl font-bold">
+    <div className="flex min-h-screen items-center justify-center bg-[#0a0d12] px-4">
+      <div className="w-[320px] rounded-xl border border-[#1f2530] bg-[#12161d] px-6 py-7">
+        <h1 className="mb-6 text-center text-[20px] font-medium text-[#e8e8e6]">
           Chat App
         </h1>
 
-        <div className="mb-6 flex rounded-lg bg-gray-200 p-1">
+        <div className="mb-6 flex border-b border-[#1f2530]">
           <button
             onClick={() => setIsLogin(true)}
-            className={`flex-1 rounded-md py-2 font-medium transition ${
+            className={`flex-1 border-b-2 py-2 text-[13px] font-medium transition ${
               isLogin
-                ? "bg-blue-600 text-white"
-                : "text-gray-700 hover:bg-gray-300"
+                ? "border-[#2dd4bf] text-[#2dd4bf]"
+                : "border-transparent text-[#5a5e66]"
             }`}
           >
             Login
@@ -30,10 +30,10 @@ export default function AuthPage() {
 
           <button
             onClick={() => setIsLogin(false)}
-            className={`flex-1 rounded-md py-2 font-medium transition ${
+            className={`flex-1 border-b-2 py-2 text-[13px] font-medium transition ${
               !isLogin
-                ? "bg-blue-600 text-white"
-                : "text-gray-700 hover:bg-gray-300"
+                ? "border-[#2dd4bf] text-[#2dd4bf]"
+                : "border-transparent text-[#5a5e66]"
             }`}
           >
             Register

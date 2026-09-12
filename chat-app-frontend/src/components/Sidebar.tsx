@@ -78,13 +78,13 @@ const handleAddFriend = async (username: string) => {
 };
 
   return (
-    <aside className="relative w-80 bg-white border-r border-gray-200 flex flex-col">
+    <aside className="relative flex w-70 flex-col border-r border-[#1f2530] bg-[#0d1117] p-3">
       <SearchUser searchQuery={searchQuery} setSearchQuery={setSearchQuery}  />
 
-      <div className="px-4 py-3 border-b border-gray-200">
+      <div className="border-b border-[#1f2530] py-3">
         <button
           onClick={() => setIsModalOpen(true)}
-          className="w-full rounded-lg bg-blue-600 py-2 text-white font-medium hover:bg-blue-700 transition"
+          className="w-full rounded-md bg-[#12332e] p-2 text-center font-medium text-[#2dd4bf] transition hover:bg-[#161b23]"
         >
           Friend Requests
         </button>

@@ -21,12 +21,12 @@ export default function FriendRequestModal({
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="w-[90%] max-w-sm rounded-xl bg-white shadow-xl"
+        className="w-[90%] max-w-sm rounded-xl border border-[#2a2e37] bg-[#161920] shadow-xl"
       >
         {/* Header */}
 
-        <div className="border-b px-5 py-4">
-          <h2 className="text-lg font-semibold">
+        <div className="px-5 py-4">
+          <h2 className="border-b border-[#2a2e37] pb-2 text-lg font-semibold text-gray-100">
             Friend Requests
           </h2>
         </div>
@@ -40,7 +40,7 @@ export default function FriendRequestModal({
               className="flex items-center justify-between border-b px-5 py-4"
             >
               <div>
-                <p className="font-medium">
+                <p className="font-medium text-amber-50">
                   {request.sender.username}
                 </p>
 

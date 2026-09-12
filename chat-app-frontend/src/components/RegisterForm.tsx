@@ -31,47 +31,59 @@ export default function RegisterForm( { onRegisterSuccess }: { onRegisterSuccess
       onSubmit={handleSubmit}
       className="flex flex-col gap-4"
     >
-      <input
-        type="text"
-        placeholder="Username"
-        value={username}
-        onChange={(e) => setUsername(e.target.value)}
-        required
-        className="rounded-lg border border-gray-300 px-4 py-3 outline-none transition focus:border-blue-500"
-      />
+      <div className="flex flex-col gap-1">
+        <label className="text-[11px] text-[#5a5e66]">Username</label>
+        <input
+          type="text"
+          placeholder="Username"
+          value={username}
+          onChange={(e) => setUsername(e.target.value)}
+          required
+          className="rounded-md border border-[#1f2530] bg-[#0d1117] px-2.5 py-2.25 text-[13px] text-[#e8e8e6] outline-none transition placeholder:text-[#5a5e66] focus:border-[#2dd4bf] focus:ring-0"
+        />
+      </div>
 
-      <input
-        type="email"
-        placeholder="Email"
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
-        required
-        className="rounded-lg border border-gray-300 px-4 py-3 outline-none transition focus:border-blue-500"
-      />
+      <div className="flex flex-col gap-1">
+        <label className="text-[11px] text-[#5a5e66]">Email</label>
+        <input
+          type="email"
+          placeholder="Email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          required
+          className="rounded-md border border-[#1f2530] bg-[#0d1117] px-2.5 py-2.25 text-[13px] text-[#e8e8e6] outline-none transition placeholder:text-[#5a5e66] focus:border-[#2dd4bf] focus:ring-0"
+        />
+      </div>
 
-      <input
-        type="password"
-        placeholder="Password"
-        value={password}
-        onChange={(e) => setPassword(e.target.value)}
-        required
-        minLength={8}
-        className="rounded-lg border border-gray-300 px-4 py-3 outline-none transition focus:border-blue-500"
-      />
+      <div className="flex flex-col gap-1">
+        <label className="text-[11px] text-[#5a5e66]">Password</label>
+        <input
+          type="password"
+          placeholder="Password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          required
+          minLength={8}
+          className="rounded-md border border-[#1f2530] bg-[#0d1117] px-2.5 py-2.25 text-[13px] text-[#e8e8e6] outline-none transition placeholder:text-[#5a5e66] focus:border-[#2dd4bf] focus:ring-0"
+        />
+      </div>
 
-      <input
-        type="password"
-        placeholder="Confirm Password"
-        value={confirmPassword}
-        onChange={(e) => setConfirmPassword(e.target.value)}
-        required
-        minLength={8}
-        className="rounded-lg border border-gray-300 px-4 py-3 outline-none transition focus:border-blue-500"
-      />
+      <div className="flex flex-col gap-1">
+        <label className="text-[11px] text-[#5a5e66]">Confirm Password</label>
+        <input
+          type="password"
+          placeholder="Confirm Password"
+          value={confirmPassword}
+          onChange={(e) => setConfirmPassword(e.target.value)}
+          required
+          minLength={8}
+          className="rounded-md border border-[#1f2530] bg-[#0d1117] px-2.5 py-2.25 text-[13px] text-[#e8e8e6] outline-none transition placeholder:text-[#5a5e66] focus:border-[#2dd4bf] focus:ring-0"
+        />
+      </div>
 
       <button
         type="submit"
-        className="rounded-lg bg-blue-600 py-3 font-medium text-white transition hover:bg-blue-700"
+        className="w-full rounded-md bg-[#12332e] p-2.5 text-[13px] font-medium text-[#2dd4bf] transition hover:bg-[#1a3d3a]"
       >
         Register
       </button>

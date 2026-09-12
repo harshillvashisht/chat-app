@@ -48,7 +48,7 @@ export default function SearchResults({
                 return (
                     <div
                         key={user.id}
-                        className="flex items-center justify-between border-b p-4"
+                        className="flex items-center justify-between border-b p-4 text-amber-50"
                     >
                         <span>{user.username}</span>
 
