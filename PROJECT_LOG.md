@@ -1672,3 +1672,13 @@ Full manual pass, two real accounts:
   one).
 - No key rotation / device-reset story (accepted tradeoff, not yet verified
   to fail gracefully).
+
+# Day 10 — UI-Polish: changed the theme to dark , fixed format issues etc 
+
+UI polish pass fully completed and merged into main (feature/ui-polish branch deleted). Fixed the background/text-contrast issues left by the first round of scoped Copilot prompts (dark canvas wasn't applied consistently, several text elements were dark-on-dark), restyled FriendRequestModal.tsx which had been missed entirely in the first pass, then did a comprehensive per-file pass — background, text, spacing, and states together per file — matched against an approved dark dev-tool-style mockup (teal accent, monospace metadata, layered surface depth instead of one flat background). Landed three real fixes alongside the styling: an image-attachment lightbox (click-to-expand, required new local state), a sidebar timestamp formatting bug (was rendering raw ISO string instead of reusing the existing formatter), and a sidebar width increase to fix the Friend Requests modal overflowing/clipping.
+
+Confirmed the new UI is a genuine upgrade over the old plain blue-and-white look — not just different, actually better.
+
+Investigated an apparent "key regenerates on login" issue seen on the deployed site vs localhost. Root-caused as expected, non-bug behavior: IndexedDB is origin-scoped, so localhost and the Vercel domain are separate origins with entirely separate key-pair storage — not a real regeneration bug. Confirmed keys persist correctly across refreshes on the deployed site itself.
+
+Chat App V2 feature scope is now functionally complete. Remaining before calling V2 fully done: tag current main commit as stable-v2, disable auto-deploy on Render and Vercel, then start the Redis/multi-instance-scaling branch (final phase, deliberately kept off main/prod given free-tier hosting constraints).
