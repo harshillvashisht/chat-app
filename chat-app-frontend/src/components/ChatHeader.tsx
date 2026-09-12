@@ -6,13 +6,13 @@ type ChatHeaderProps = {
 
 export default function ChatHeader({ selectedChat }: ChatHeaderProps) {
   return (
-    <header className="h-16 bg-white border-b px-6 flex items-center justify-between shadow-sm">
+    <header className="h-16 bg-white border-b border-[#2a2e37] px-6 flex items-center justify-between">
       <div>
-        <h2 className="text-lg font-semibold">
+        <h2 className="text-lg font-normal">
           {selectedChat?.otherUser.username ?? "Select a chat"}
         </h2>
 
-        <p className="text-sm text-gray-500">
+        <p className="font-mono text-xs text-gray-500">
           {selectedChat ? "Conversation" : "No chat selected"}
         </p>
       </div>
